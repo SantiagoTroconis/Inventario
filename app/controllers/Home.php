@@ -2,6 +2,12 @@
 // Controlador de inicio
 class Home extends Controller
 {
+    private $requestModel;
+    
+    public function __construct()
+    {
+        $this->requestModel = new RequestModel();
+    }
 
     public function index()
     {
@@ -40,11 +46,18 @@ class Home extends Controller
             ];
         }
 
+        // Obtener solicitudes pendientes para Admin y Sucursal
+        $pendingRequests = [];
+        if ($currentUserRole === 'Administrador' || $currentUserRole === 'Sucursal') {
+            $pendingRequests = $this->requestModel->getPendingRequestsForUser($_SESSION['usuario_id'], 5);
+        }
+
         $data = [
             'pageTitle' => 'Dashboard',
             'usuario'   => $currentUserName,
             'tipo_usuario' => $currentUserRole,
-            'kpis'      => $kpis
+            'kpis'      => $kpis,
+            'pendingRequests' => $pendingRequests
         ];
 
         $this->view('home/index', $data);

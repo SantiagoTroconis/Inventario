@@ -18,8 +18,13 @@
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div>
-            <h2 class="text-xl font-bold text-gray-800">Inventario General</h2>
-            <p class="text-gray-500 text-sm">Administra el inventario completo, precios y existencias.</p>
+            <?php if ($esSucursal):?>
+                <h2 class="text-xl font-bold text-gray-800">Inventario de Sucursal</h2>
+                <p class="text-gray-500 text-sm">Visualiza y gestiona tu propio inventario.</p>
+            <?php else: ?>
+                <h2 class="text-xl font-bold text-gray-800">Inventario General</h2>
+                <p class="text-gray-500 text-sm">Visualiza y gestiona el inventario general.</p>
+            <?php endif; ?>
         </div>
         <div class="flex gap-3">
             <?php if ($tipo_usuario === 'Administrador'): ?>
@@ -33,39 +38,18 @@
         </div>
     </div>
 
-    <!-- Filters & Search -->
-    <div class="flex flex-col lg:flex-row justify-between gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-100">
-        <div class="relative flex-grow max-w-md">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-            <input type="text" placeholder="Buscar por código, nombre o categoría..." class="w-full bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 block pl-9 p-2.5 placeholder-gray-400 focus:outline-none transition-shadow">
-        </div>
-        <div class="flex flex-wrap gap-3">
-            <select class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 block p-2.5 focus:outline-none min-w-[160px]">
-                <option value="">Todas las Categorías</option>
-                <option value="electronics">Electrónica</option>
-                <option value="furniture">Mobiliario</option>
-                <option value="consumables">Consumibles</option>
-            </select>
-            <select class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 block p-2.5 focus:outline-none min-w-[150px]">
-                <option value="">Estado: Todos</option>
-                <option value="active">Activo</option>
-                <option value="low_stock">Stock Bajo</option>
-                <option value="inactive">Inactivo</option>
-            </select>
-        </div>
-    </div>
+    <!-- Search handled by DataTables -->
 
     <!-- Products Table -->
     <div class="overflow-x-auto rounded-lg border border-gray-200">
-        <table class="w-full text-sm text-left text-gray-600">
+        <table id="productosTable" class="w-full text-sm text-left text-gray-600">
             <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
                     <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Código</th>
                     <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Producto</th>
                     <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Categoría</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Stock</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Precio Unit.</th>
                     <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Estado</th>
+                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Stock</th>
                     <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Acciones</th>
                 </tr>
             </thead>
@@ -110,7 +94,15 @@
                         </td>
                         <td class="px-6 py-4"><?php echo $producto['categoria']; ?></td>
                         <td class="px-6 py-4">
-                            <?php if ($tipo_usuario === 'Administrador'): ?>
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-2 h-2 rounded-full <?php echo $dotColorClass; ?>"></div>
+                                <span class="font-medium <?php echo $statusTextColor; ?>">
+                                    <?php echo $producto['estado']; ?>
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <?php if ($tipo_usuario === 'Administrador' || ($tipo_usuario === 'Sucursal' && $esSucursal)): ?>
                                 <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold border <?php echo $badgeColorClass; ?>">
                                     <?php echo $producto['stock']; ?>
                                 </span>
@@ -120,20 +112,9 @@
                                 </button>
                             <?php endif; ?>
                         </td>
-                        <td class="px-6 py-4 font-medium text-gray-900">
-                            <?php echo $producto['precio']; ?>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-1.5">
-                                <div class="w-2 h-2 rounded-full <?php echo $dotColorClass; ?>"></div>
-                                <span class="font-medium <?php echo $statusTextColor; ?>">
-                                    <?php echo $producto['estado']; ?>
-                                </span>
-                            </div>
-                        </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-2">
-                                <?php if ($tipo_usuario === 'Administrador'): ?>
+                                <?php if ($tipo_usuario === 'Administrador' || ($tipo_usuario === 'Sucursal' && $esSucursal)): ?>
                                     <button class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-100">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
@@ -141,7 +122,7 @@
                                 <button class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors border border-transparent hover:border-gray-200" onclick="openDetailModal('<?php echo $producto['id']; ?>')">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
-                                <?php if ($tipo_usuario === 'Administrador'): ?>
+                                <?php if ($tipo_usuario === 'Administrador' || ($tipo_usuario === 'Sucursal' && $esSucursal)): ?>
                                     <button class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors border border-transparent hover:border-red-100">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
@@ -154,18 +135,7 @@
         </table>
     </div>
 
-    <!-- Pagination -->
-    <div class="flex flex-col md:flex-row justify-between items-center mt-6 pt-6 border-t border-gray-100 gap-4">
-        <span class="text-sm text-gray-500">Mostrando <span class="text-gray-900 font-medium">1-3</span> de <span class="text-gray-900 font-medium">1247</span> resultados</span>
-        <div class="flex items-center gap-2">
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50"><i class="fa-solid fa-chevron-left"></i></button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-600 border border-blue-600 text-white font-medium shadow-sm">1</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">2</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">3</button>
-            <span class="text-gray-400 px-1">...</span>
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"><i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-    </div>
+    <!-- Pagination handled by DataTables -->
 </div>
 
 <!-- Request Modal -->
@@ -189,6 +159,14 @@
         
         <!-- Modal Body -->
         <div class="p-6">
+            <!-- Error Message Area -->
+            <div id="requestErrorMessage" class="hidden mb-4 p-4 rounded-lg bg-red-50 border border-red-200">
+                <div class="flex gap-2">
+                    <i class="fa-solid fa-exclamation-circle text-red-600 mt-0.5"></i>
+                    <p id="requestErrorText" class="text-sm text-red-700 font-medium"></p>
+                </div>
+            </div>
+            
             <div id="requestProductInfo" class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
                 <div class="flex items-center gap-3">
                     <div id="requestProductIcon" class="w-12 h-12 rounded-lg bg-white flex items-center justify-center text-gray-500">
@@ -204,8 +182,28 @@
             <form id="requestForm" method="POST" action="<?php echo URL_BASE; ?>/requests.php/nueva" class="space-y-4">
                 <input type="hidden" id="requestProductId" name="producto_id" value="">
                 
-                <!-- Solicitado ID field (hidden, will be set by JavaScript based on user type) -->
-                <input type="hidden" id="requestSolicitadoId" name="solicitado_id" value="<?php echo ($tipo_usuario === 'Sucursal' ? ($administrador->usuario_id ?? '') : ''); ?>">
+                <!-- Solicitado ID field: Determined by user type and context -->
+                <?php 
+                    $defaultSolicitadoId = '';
+                    $destinatarioNombre = '';
+                    
+                    if ($tipo_usuario === 'Agente') {
+                        // Agente requests to the Sucursal whose inventory they're viewing
+                        if (isset($sucursal_id) && !empty($sucursal_id)) {
+                            $defaultSolicitadoId = $sucursal_id;
+                            $destinatarioNombre = 'la Sucursal';
+                        } else {
+                            // Fallback: request to administrator if no sucursal context
+                            $defaultSolicitadoId = $administrador->usuario_id ?? '';
+                            $destinatarioNombre = $administrador->nombre ?? 'Administrador';
+                        }
+                    } elseif ($tipo_usuario === 'Sucursal') {
+                        // Sucursal always requests to Administrator
+                        $defaultSolicitadoId = $administrador->usuario_id ?? '';
+                        $destinatarioNombre = $administrador->nombre ?? 'Administrador';
+                    }
+                ?>
+                <input type="hidden" id="requestSolicitadoId" name="solicitado_id" value="<?php echo $defaultSolicitadoId; ?>">
                 
                 <div>
                     <label for="requestQuantity" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -215,20 +213,17 @@
                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-shadow">
                 </div>
 
-                <!-- Destinatario field - shown only for Agente users -->
-                <?php if ($tipo_usuario === 'Agente'): ?>
-                <div>
-                    <label for="requestDestinatario" class="block text-sm font-semibold text-gray-700 mb-2">
-                        Solicitar a <span class="text-red-500">*</span>
-                    </label>
-                    <select id="requestDestinatario" name="destinatario" required onchange="updateSolicitadoId()"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-shadow">
-                        <option value="">Selecciona una sucursal...</option>
-                        <?php foreach ($sucursales as $sucursal): ?>
-                            <option value="<?php echo $sucursal->usuario_id; ?>"><?php echo $sucursal->nombre; ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+                <!-- Information showing where request will be sent -->
+                <?php if (($tipo_usuario === 'Agente' || $tipo_usuario === 'Sucursal') && !empty($destinatarioNombre)): ?>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex gap-2">
+                            <i class="fa-solid fa-info-circle text-blue-600 mt-0.5"></i>
+                            <div class="text-sm text-blue-700">
+                                <p class="font-semibold mb-1">Destinatario de la solicitud</p>
+                                <p>Tu solicitud será enviada a <strong><?php echo $destinatarioNombre; ?></strong> para su aprobación.</p>
+                            </div>
+                        </div>
+                    </div>
                 <?php endif; ?>
                 
                 <div>
@@ -244,7 +239,7 @@
                     <div class="flex gap-2">
                         <i class="fa-solid fa-info-circle text-blue-600 mt-0.5"></i>
                         <p class="text-sm text-blue-700">
-                            Tu solicitud será enviada <?php echo ($tipo_usuario === 'Agente' ? 'a la sucursal seleccionada' : 'al administrador'); ?> para su aprobación. Recibirás una notificación cuando sea procesada.
+                            Tu solicitud será procesada y recibirás una notificación cuando sea aprobada o rechazada.
                         </p>
                     </div>
                 </div>
@@ -380,6 +375,7 @@
     // Store products data for modal access
     const productsData = <?php echo json_encode($productos); ?>;
     const userType = '<?php echo $tipo_usuario; ?>';
+    const esSucursal = <?php echo $esSucursal ? 'true' : 'false'; ?>;
     const administradorId = <?php echo json_encode($administrador->usuario_id ?? null); ?>;
     const baseUrl = '<?php echo URL_BASE; ?>';
     
@@ -390,7 +386,10 @@
             console.error('Product not found:', productId);
             return;
         }
-        
+
+        // Hide error message from previous attempts
+        document.getElementById('requestErrorMessage').classList.add('hidden');
+
         // Populate request modal
         document.getElementById('requestProductIcon').innerHTML = `<i class="fa-solid ${product.icon}"></i>`;
         document.getElementById('requestProductName').textContent = product.nombre;
@@ -401,13 +400,8 @@
         // Set product ID in hidden field
         document.getElementById('requestProductId').value = productId;
         
-        // Reset destinatario if exists (for Agente users)
-        const destinatarioSelect = document.getElementById('requestDestinatario');
-        if (destinatarioSelect) {
-            destinatarioSelect.value = '';
-            // Reset hidden solicitado_id field for Agente
-            document.getElementById('requestSolicitadoId').value = '';
-        }
+        // For Agente users, solicitado_id is already set (no need to reset)
+        // Just keep the pre-filled value
         
         // Show modal
         const modal = document.getElementById('requestModal');
@@ -424,19 +418,13 @@
             }
         }, 10);
     }
-    
-    // Update solicitado_id when Agente selects a destinatario
-    function updateSolicitadoId() {
-        const destinatarioSelect = document.getElementById('requestDestinatario');
-        const solicitadoIdField = document.getElementById('requestSolicitadoId');
-        if (destinatarioSelect && solicitadoIdField) {
-            solicitadoIdField.value = destinatarioSelect.value;
-        }
-    }
 
     function closeRequestModal() {
         const modal = document.getElementById('requestModal');
         const innerDiv = modal.querySelector('div');
+        
+        // Hide error message
+        document.getElementById('requestErrorMessage').classList.add('hidden');
         
         // Trigger close animation
         if (innerDiv) {
@@ -451,6 +439,59 @@
             document.body.style.overflow = '';
         }, 200);
     }
+    
+    // Handle request form submission via AJAX
+    document.getElementById('requestForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Hide any previous error messages
+        const errorDiv = document.getElementById('requestErrorMessage');
+        errorDiv.classList.add('hidden');
+        
+        // Get submit button
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        
+        // Disable form and show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Enviando...';
+        
+        // Prepare form data
+        const formData = new FormData(this);
+        
+        // Submit via AJAX
+        fetch(`${baseUrl}/requests.php/nueva`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Success - redirect to requests page
+                window.location.href = data.redirect || `${baseUrl}/requests.php`;
+            } else {
+                // Show error in modal
+                document.getElementById('requestErrorText').textContent = data.message || 'Error al crear la solicitud';
+                errorDiv.classList.remove('hidden');
+                
+                // Re-enable form
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('requestErrorText').textContent = 'Error de conexión. Por favor, intenta de nuevo.';
+            errorDiv.classList.remove('hidden');
+            
+            // Re-enable form
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        });
+    });
     
     // Detail Modal Functions
     function openDetailModal(productId) {
@@ -487,7 +528,8 @@
         const userInfo = document.getElementById('detailUserInfo');
         const requestBtn = document.getElementById('detailRequestBtn');
         
-        if (userType === 'Administrador') {
+        if (userType === 'Administrador' || (userType === 'Sucursal' && esSucursal)) {
+            // Admin view OR Sucursal viewing their own inventory
             stockSection.classList.remove('hidden');
             minStockSection.classList.remove('hidden');
             document.getElementById('detailProductStock').textContent = product.stock;
@@ -496,6 +538,7 @@
             userInfo.classList.add('hidden');
             requestBtn.classList.add('hidden');
         } else {
+            // Agente OR Sucursal viewing admin inventory
             stockSection.classList.add('hidden');
             minStockSection.classList.add('hidden');
             adminInfo.classList.add('hidden');
@@ -590,6 +633,168 @@
     #detailModal {
         overflow-y: auto;
     }
+    
+    /* DataTables Custom Styling - Professional Look */
+    /* Wrapper adjustments */
+    #productosTable_wrapper {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        color: #000000; /* gray-700 */
+    }
+
+    /* Search input with subtle icon and focus ring */
+    #productosTable_wrapper .dataTables_filter input {
+        padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+        border: 1px solid #e5e7eb; /* gray-200 */
+        background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23909aa0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;
+        background-size: 14px;
+        border-radius: 0.5rem;
+        font-size: 0.92rem;
+        margin-left: 0.5rem;
+        box-shadow: 0 1px 2px rgba(16,24,40,0.03);
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    #productosTable_wrapper .dataTables_filter input:focus {
+        outline: none;
+        border-color: #3b82f6; /* blue-500 */
+        box-shadow: 0 6px 18px rgba(59,130,246,0.12);
+        background-color: #ffffff;
+    }
+
+    /* Length select (rows per page) */
+    #productosTable_wrapper .dataTables_length select {
+        padding: 0.45rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        font-size: 0.92rem;
+        margin: 0 0.5rem;
+        background: white;
+        box-shadow: 0 1px 2px rgba(16,24,40,0.03);
+    }
+
+    /* Info text and pagination container */
+    #productosTable_wrapper .dataTables_info,
+    #productosTable_wrapper .dataTables_paginate {
+        padding-top: 1rem;
+        font-size: 0.9rem;
+        color: #000000; /* gray-500 */
+    }
+
+    /* Pagination buttons */
+    #productosTable_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.45rem 0.75rem;
+        margin: 0 0.125rem;
+        border: 1px solid transparent;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+        color: #000000; /* gray-700 */
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+        transition: background-color 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+    }
+
+    #productosTable_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #1d4ed8; /* subtle */
+        border-color: #e6eefc;
+        
+    }
+
+    #productosTable_wrapper .dataTables_paginate .paginate_button.current {
+        background: linear-gradient(180deg,#2563eb,#1d4ed8);
+        border-color: #1d4ed8;
+        color: white;
+        box-shadow: 0 6px 18px rgba(29,78,216,0.18);
+    }
+
+    #productosTable_wrapper .dataTables_paginate .paginate_button.disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+        transform: none;
+    }
+
+    /* Table visual polish */
+    #productosTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        border: none;
+    }
+
+    #productosTable thead th {
+        background: #f9fafb; /* gray-50 */
+        color: #374151;
+        font-weight: 600;
+        border-bottom: 1px solid #e6e9ee;
+        padding: 0.85rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    #productosTable tbody td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    /* Zebra rows and hover */
+    #productosTable tbody tr:nth-child(even) {
+        background: #ffffff;
+    }
+
+    #productosTable tbody tr:hover {
+        background: #fbfdff; /* very light blue */
+        box-shadow: inset 0 0 0 1px rgba(59,130,246,0.03);
+    }
+
+    /* Small responsive tweaks */
+    @media (max-width: 640px) {
+        #productosTable_wrapper .dataTables_filter input {
+            margin-left: 0;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        #productosTable thead th,
+        #productosTable tbody td {
+            padding: 0.6rem 0.5rem;
+        }
+    }
 </style>
+
+<script>
+    // Initialize DataTables when document is ready
+    $(document).ready(function() {
+        $('#productosTable').DataTable({
+            responsive: true,
+            language: {
+                "decimal": "",
+                "emptyTable": "No hay datos disponibles en la tabla",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ productos",
+                "infoEmpty": "Mostrando 0 a 0 de 0 productos",
+                "infoFiltered": "(filtrado de _MAX_ productos totales)",
+                "infoPostFix": "",
+                "thousands": ",",
+                "lengthMenu": "Mostrar _MENU_ productos",
+                "loadingRecords": "Cargando...",
+                "processing": "Procesando...",
+                "search": "Buscar:",
+                "zeroRecords": "No se encontraron productos coincidentes",
+                "paginate": {
+                    "first": "Primero",
+                    "last": "Último",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                },
+                "aria": {
+                    "sortAscending": ": activar para ordenar la columna ascendente",
+                    "sortDescending": ": activar para ordenar la columna descendente"
+                }
+            },
+            pageLength: 10,
+            order: [[1, 'asc']], // Sort by product name by default
+            columnDefs: [
+                { orderable: false, targets: [4, 5] } // Disable sorting on Stock and Actions columns
+            ]
+        });
+    });
+</script>
 
 <?php require_once BASE_PATH . '/app/views/layouts/footer.php'; ?>

@@ -4,16 +4,17 @@ class Products extends Controller {
 
     private $productModel;
     private $userModel;
+    private $requestModel;
     
     public function __construct()
     {
         $this->productModel = new ProductModel();
         $this->userModel = new UserModel();
+        $this->requestModel = new RequestModel();
     }
         
     public function index() {
-            
-            if(!isset($_SESSION['usuario'])) {
+        if(!isset($_SESSION['usuario'])) {
             header('Location: ' . URL_BASE . '/auth');
             exit();
         }
@@ -64,7 +65,99 @@ class Products extends Controller {
             'productos' => $productos,
             'tipo_usuario' => $_SESSION['tipo_usuario'],
             'administrador' => $administrador,
-            'sucursales' => $sucursales
+            'sucursales' => $sucursales,
+            'esSucursal' => false,
+            'sucursal_id' => null  // No specific sucursal for general inventory
+        ];
+
+        $this->view('productos/index', $data);
+    }
+
+
+    public function sucursal($sucursalId = null): void {
+        if(!isset($_SESSION['usuario'])) {
+            header('Location: ' . URL_BASE . '/auth.php');
+            exit();
+        }
+
+        // Determine which sucursal's inventory to show
+        if ($sucursalId === null) {
+            // No ID provided - use logged user's ID (for Sucursales viewing their own)
+            $sucursalId = $_SESSION['usuario_id'];
+        } else {
+            // ID provided - verify permissions
+            // Sucursales can ONLY view their own inventory
+            if ($_SESSION['tipo_usuario'] === 'Sucursal' && $sucursalId != $_SESSION['usuario_id']) {
+                $_SESSION['error_message'] = 'No tienes permisos para ver este inventario.';
+                header('Location: ' . URL_BASE . '/products.php/sucursal');
+                exit();
+            }
+            // Agentes can view any sucursal's inventory (no restriction)
+        }
+
+        $productosDb = $this->productModel->getBySucursal($sucursalId);
+        
+        
+        if (!isset($productosDb) || empty($productosDb)) {
+            $_SESSION['error_message'] = 'No se encontraron productos para esta sucursal.';
+            $data = [
+                'pageTitle' => 'Gestión de Productos',
+                'productos' => [],
+                'tipo_usuario' => $_SESSION['tipo_usuario'],
+                'administrador' => null,
+                'sucursales' => [],
+                'esSucursal' => true,
+                'sucursal_id' => $sucursalId  // Pass sucursal ID even when empty
+            ];
+            $this->view('productos/index', $data);
+            return;
+        }
+
+         // Formatear productos para la vista
+        $productos = [];
+        foreach ($productosDb as $producto) {
+            $stockClass = 'success';
+            $statusClass = 'active';
+            $estado = 'Activo';
+            
+            if ($producto->stock <= $producto->stock_minimo) {
+                $stockClass = 'warning';
+                $statusClass = 'warning';
+                $estado = 'Stock Bajo';
+            }
+            
+            if ($producto->activo == 0) {
+                $statusClass = 'inactive';
+                $estado = 'Inactivo';
+            }
+            
+            $productos[] = [
+                'id' => $producto->id,
+                'codigo' => $producto->codigo,
+                'nombre' => $producto->nombre,
+                'descripcion' => $producto->descripcion,
+                'categoria' => $producto->categoria,
+                'stock' => $producto->stock,
+                'stock_minimo' => $producto->stock_minimo,
+                'precio' => '$' . number_format($producto->precio, 2),
+                'estado' => $estado,
+                'status_class' => $statusClass,
+                'stock_class' => $stockClass,
+                'icon' => $this->getCategoryIcon($producto->categoria)
+            ];
+        }
+
+        $administrador = $this->userModel->getAdministrador();
+        $sucursales = $this->userModel->getSucursales();
+
+        $data = [
+            'pageTitle' => 'Gestión de Productos',
+            'productos' => $productos,
+            'tipo_usuario' => $_SESSION['tipo_usuario'],
+            'administrador' => $administrador,
+            'sucursales' => $sucursales,
+            'esSucursal' => true,
+            'sucursal_id' => $sucursalId  // Pass the sucursal ID being viewed
         ];
 
         $this->view('productos/index', $data);
@@ -186,14 +279,9 @@ class Products extends Controller {
                 exit();
             }
 
-            // Incluir RequestModel
-            if (!isset($this->requestModel)) {
-                $this->requestModel = new RequestModel();
-            }
-
-            // Crear la solicitud
+            // Crear la solicitud (RequestModel ya está inicializado en el constructor)
             $solicitudData = [
-                'solcitante_id' => $_SESSION['usuario_id'],
+                'solicitante_id' => $_SESSION['usuario_id'],  // FIXED: era solcitante_id
                 'solicitado_id' => $solicitadoId,
                 'tipo' => 'Producto',
                 'descripcion' => $notas,
@@ -205,10 +293,15 @@ class Products extends Controller {
 
             if ($solicitudId) {
                 // Agregar el detalle del producto
-                $this->requestModel->addDetalle($solicitudId, $productId, $cantidad, $notas);
+                $detalleCreado = $this->requestModel->addDetalle($solicitudId, $productId, $cantidad, $notas);
                 
-                $_SESSION['success_message'] = 'Solicitud creada exitosamente. ID: ' . $solicitudId;
-                header('Location: ' . URL_BASE . '/productos');
+                if ($detalleCreado) {
+                    $_SESSION['success_message'] = 'Solicitud creada exitosamente. ID: ' . $solicitudId;
+                    header('Location: ' . URL_BASE . '/requests');
+                } else {
+                    $_SESSION['error_message'] = 'Solicitud creada pero error al agregar el detalle del producto.';
+                    header('Location: ' . URL_BASE . '/productos');
+                }
             } else {
                 $_SESSION['error_message'] = 'Error al crear la solicitud. Por favor intenta nuevamente.';
                 header('Location: ' . URL_BASE . '/productos');

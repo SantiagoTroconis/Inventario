@@ -14,7 +14,7 @@
     </div>
 
     <div class="overflow-x-auto rounded-lg border border-gray-200">
-        <table class="w-full text-sm text-left text-gray-600">
+        <table id="entradasTable" class="w-full text-sm text-left text-gray-600">
             <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
                     <th class="px-6 py-4 font-semibold">ID</th>
@@ -47,15 +47,104 @@
         </table>
     </div>
 
-    <div class="flex justify-between items-center mt-6 pt-6 border-t border-gray-100">
-        <span class="text-sm text-gray-500">Mostrando <span class="text-gray-900 font-medium">1-3</span> de <span class="text-gray-900 font-medium">3</span> entradas</span>
-        <div class="flex items-center gap-2">
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50"><i class="fa-solid fa-chevron-left"></i></button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-600 border border-blue-600 text-white font-medium shadow-sm">1</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">2</button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"><i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-    </div>
+    <!-- Pagination handled by DataTables -->
 </div>
+
+<style>
+    /* DataTables Custom Styling */
+    #entradasTable_wrapper .dataTables_filter input {
+        padding: 0.625rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        margin-left: 0.5rem;
+    }
+    
+    #entradasTable_wrapper .dataTables_filter input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        ring: 2px;
+        ring-color: rgba(59, 130, 246, 0.2);
+    }
+    
+    #entradasTable_wrapper .dataTables_length select {
+        padding: 0.5rem 2rem 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        margin: 0 0.5rem;
+    }
+    
+    #entradasTable_wrapper .dataTables_info,
+    #entradasTable_wrapper .dataTables_paginate {
+        padding-top: 1.5rem;
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    #entradasTable_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.5rem 0.75rem;
+        margin: 0 0.125rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        color: #4b5563;
+        background: white;
+    }
+    
+    #entradasTable_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #eff6ff;
+        border-color: #3b82f6;
+        color: #2563eb;
+    }
+    
+    #entradasTable_wrapper .dataTables_paginate .paginate_button.current {
+        background: #3b82f6;
+        border-color: #3b82f6;
+        color: white;
+    }
+    
+    #entradasTable_wrapper .dataTables_paginate .paginate_button.disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+</style>
+
+<script>
+    $(document).ready(function() {
+        $('#entradasTable').DataTable({
+            responsive: true,
+            language: {
+                "decimal": "",
+                "emptyTable": "No hay entradas disponibles",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ entradas",
+                "infoEmpty": "Mostrando 0 a 0 de 0 entradas",
+                "infoFiltered": "(filtrado de _MAX_ entradas totales)",
+                "infoPostFix": "",
+                "thousands": ",",
+                "lengthMenu": "Mostrar _MENU_ entradas",
+                "loadingRecords": "Cargando...",
+                "processing": "Procesando...",
+                "search": "Buscar:",
+                "zeroRecords": "No se encontraron entradas coincidentes",
+                "paginate": {
+                    "first": "Primero",
+                    "last": "Último",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                },
+                "aria": {
+                    "sortAscending": ": activar para ordenar la columna ascendente",
+                    "sortDescending": ": activar para ordenar la columna descendente"
+                }
+            },
+            pageLength: 10,
+            order: [[4, 'desc']], // Sort by date descending by default
+            columnDefs: [
+                { orderable: false, targets: [6] } // Disable sorting on Actions column
+            ]
+        });
+    });
+</script>
 
 <?php require_once BASE_PATH . '/app/views/layouts/footer.php'; ?>

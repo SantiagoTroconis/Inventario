@@ -1,8 +1,10 @@
 <?php
-
 /**
  * Products Page
  */
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', __DIR__);
+}
 
 // Initialize the application
 require_once 'app/init.php';
@@ -10,11 +12,29 @@ require_once 'app/init.php';
 // Create and run the Products controller
 $controller = new Products();
 
-// Check if there's an action parameter
-if (isset($_GET['action']) && method_exists($controller, $_GET['action'])) {
-    $action = $_GET['action'];
-    $params = isset($_GET['id']) ? [$_GET['id']] : [];
-    call_user_func_array([$controller, $action], $params);
-} else {
-    $controller->index();
+$pathInfo = $_SERVER['PATH_INFO'] ?? '/';
+$action = trim($pathInfo, '/');
+
+// Si está vacío, usar 'index'
+if (empty($action)) {
+    $action = 'index';
 }
+if (str_contains($action,'/')) {
+    $parts = explode('/', $action);
+    $action = $parts[0];
+    $id = $parts[1] ?? null;
+}
+
+
+switch ($action) {
+    case 'new':
+        $controller->add();
+        break;
+    case 'sucursal':
+        $controller->sucursal($id ?? null);
+        break;
+    default:
+        $controller->index();
+        break;
+}
+

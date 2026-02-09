@@ -43,7 +43,7 @@ class UserModel extends Database
         return $this->single();
     }
 
-    // Obtener todos los usuarios de tipo Sucursal
+    // Obtener todos los usuarios de tipo Sucursal activos
     public function getSucursales()
     {
         $this->query("SELECT usuario_id, nombre FROM Usuarios_Inventario WHERE tipo_usuario = 'Sucursal' ORDER BY nombre");

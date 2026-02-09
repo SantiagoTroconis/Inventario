@@ -21,6 +21,14 @@ class ProductModel extends Database {
         $this->bind(':id', $id);
         return $this->single();
     }
+
+    public function getBySucursal($sucursal_id) {
+        $this->query("SELECT * FROM Productos_Inventario 
+                        WHERE usuario_id = :sucursal_id
+                      ");
+        $this->bind(':sucursal_id', $sucursal_id);
+        return $this->resultSet();
+    }
     
     // Obtener producto por código
     public function getByCodigo($codigo) {
