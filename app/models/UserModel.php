@@ -39,7 +39,7 @@ class UserModel extends Database
     // Obtener el usuario Administrador
     public function getAdministrador()
     {
-        $this->query("SELECT TOP 1 usuario_id, nombre FROM Usuarios_Inventario WHERE tipo_usuario = 'Administrador'");
+        $this->query("SELECT 1 usuario_id, nombre FROM Usuarios_Inventario WHERE tipo_usuario = 'Administrador'");
         return $this->single();
     }
 

@@ -106,35 +106,31 @@ class Requests extends Controller
             
             $estadoLower = strtolower(trim($req->estado));
             
-            // Fetch counter-offer data for any request that has one (En negociación or Aprobada con Cambios)
-            if ($estadoLower === 'en negociación' || $estadoLower === 'en negociacion' || 
-                $estadoLower === 'aprobada con cambios') {
+            $negotiation = $this->requestModel->getNegotiationBySolicitudId($req->id);
+            
+            if ($negotiation) {
+                $solicitud['counter_offer_id'] = $negotiation->solicitud_id;
+                $solicitud['counter_offer_notes'] = $negotiation->counter_offer_notes ?? '';
                 
-                $counterOffer = $this->requestModel->getCounterOfferByParentId($req->id);
+                // Get negotiation items
+                $negotiationItems = $this->requestModel->getNegotiationDetails($negotiation->id);
+                $solicitud['counter_offer_items'] = [];
                 
-                if ($counterOffer) {
-                    $solicitud['counter_offer_id'] = $counterOffer->id;
-                    $solicitud['counter_offer_notes'] = $counterOffer->counter_offer_notes ?? '';
-                    
-                    // Get counter-offer items
-                    $counterDetalles = $this->requestModel->getDetalles($counterOffer->id);
-                    $solicitud['counter_offer_items'] = [];
-                    
-                    foreach ($counterDetalles as $detalle) {
-                        $solicitud['counter_offer_items'][] = [
-                            'id' => $detalle->producto_id,
-                            'nombre' => $detalle->producto_nombre,
-                            'sku' => $detalle->producto_codigo,
-                            'cantidad' => $detalle->cantidad,
-                            'observaciones' => $detalle->observaciones ?? ''
-                        ];
-                    }
-                    
-                    // If counter-offer was accepted, replace the main items_detail with counter-offer quantities
-                    if ($estadoLower === 'aprobada con cambios' && strtolower($counterOffer->estado) === 'aprobada') {
-                        $solicitud['items_detail'] = $solicitud['counter_offer_items'];
-                        $solicitud['was_counter_offered'] = true;
-                    }
+                foreach ($negotiationItems as $detalle) {
+                    $solicitud['counter_offer_items'][] = [
+                        'id' => $detalle->producto_id,
+                        'nombre' => $detalle->producto_nombre,
+                        'sku' => $detalle->producto_codigo,
+                        'cantidad' => $detalle->cantidad, // Aliased in model
+                        'observaciones' => $detalle->observaciones ?? ''
+                    ];
+                }
+                
+                // If negotiation was accepted, replace the main items_detail with negotiation quantities
+                // Logic: Parent is 'Aprobada con Cambios' AND negotiation is 'Aceptada'
+                if (($estadoLower === 'aprobada con cambios' || strpos($estadoLower, 'aprobada') !== false) && strtolower($negotiation->estado) === 'aceptada') {
+                    $solicitud['items_detail'] = $solicitud['counter_offer_items'];
+                    $solicitud['was_counter_offered'] = true;
                 }
             }
 
@@ -275,11 +271,11 @@ class Requests extends Controller
 
             // Verificar si hay suficiente stock
             if ($producto->stock < $cantidad) {
-                $errorMsg = 'Stock insuficiente. Disponible: ' . $producto->stock . ', solicitado: ' . $cantidad;
+                $errorMsg = 'Stock insuficiente.';
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     http_response_code(400);
-                    echo json_encode(['success' => false, 'message' => $errorMsg, 'available_stock' => $producto->stock]);
+                    echo json_encode(['success' => false, 'message' => $errorMsg]);
                     exit();
                 }
                 $_SESSION['error_message'] = $errorMsg;
@@ -501,17 +497,17 @@ class Requests extends Controller
             // Obtener notas de modificación
             $counter_offer_notes = $_POST['counter_offer_notes'] ?? 'Modificación de cantidades solicitadas';
 
-            // Crear contra-oferta
-            $counterOfferId = $this->requestModel->createCounterOffer(
+            // Crear NEGOCIACIÓN (Refactor)
+            $negotiationId = $this->requestModel->createNegotiation(
                 $id,
                 $_SESSION['usuario_id'],
                 $modified_details,
                 $counter_offer_notes
             );
 
-            if ($counterOfferId) {
+            if ($negotiationId) {
                 $_SESSION['success_message'] = 'Contra-oferta enviada exitosamente.';
-                echo json_encode(['success' => true, 'message' => 'Contra-oferta enviada exitosamente.', 'counter_offer_id' => $counterOfferId]);
+                echo json_encode(['success' => true, 'message' => 'Contra-oferta enviada exitosamente.', 'counter_offer_id' => $negotiationId]);
             } else {
                 http_response_code(500);
                 echo json_encode(['success' => false, 'message' => 'Error al crear la contra-oferta.']);
@@ -541,87 +537,62 @@ class Requests extends Controller
     {
         header('Content-Type: application/json');
         
+        // En el frontend enviamos el ID de la solicitud principal al endpoint
+        // Pero el modelo nuevo necesita el ID de la negociación?
+        // Revisemos `performAction` en JS: call `aceptar_contraoferta/${requestId}`.
+        // Así que recibimos `$requestId`. 
+        // Necesitamos buscar la negociación pendiente asociada a esa request.
+        
         if (!isset($_SESSION['usuario'])) {
             http_response_code(401);
             echo json_encode(['success' => false, 'message' => 'No autorizado']);
             exit();
         }
 
-        // Obtener la contra-oferta
-        $counterOffer = $this->requestModel->getById($id);
-        
-        if (!$counterOffer || !$counterOffer->is_counter_offer) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Contra-oferta no válida.']);
+        // Buscar negociación pendiente
+        $negotiation = $this->requestModel->getNegotiationBySolicitudId($id);
+
+
+        if (!$negotiation) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'No se encontró negociación activa.']);
             exit();
         }
 
-        // Verificar que el usuario actual sea el destinatario de la contra-oferta
-        if ($counterOffer->solicitado_id != $_SESSION['usuario_id']) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'No tiene permisos para aceptar esta contra-oferta.']);
-            exit();
-        }
-
-        // Aceptar contra-oferta
-        $result = $this->requestModel->acceptCounterOffer(
-            $id,
-            $counterOffer->parent_request_id,
-            $_SESSION['usuario_id']
-        );
-
-        if ($result) {
-            $_SESSION['success_message'] = 'Contra-oferta aceptada exitosamente.';
-            echo json_encode(['success' => true, 'message' => 'Contra-oferta aceptada exitosamente.']);
+        if ($this->requestModel->acceptNegotiation($negotiation->id, $id, $_SESSION['usuario_id'])) {
+             echo json_encode(['success' => true, 'message' => 'Contra-oferta aceptada correctamente']);
         } else {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Error al aceptar la contra-oferta.']);
+             http_response_code(500);
+             echo json_encode(['success' => false, 'message' => 'Error al aceptar contra-oferta']);
         }
-        
         exit();
     }
 
+
+
     public function rechazar_contraoferta($id)
     {
-        header('Content-Type: application/json');
-        
         if (!isset($_SESSION['usuario'])) {
             http_response_code(401);
             echo json_encode(['success' => false, 'message' => 'No autorizado']);
             exit();
         }
-
-        // Obtener la contra-oferta
-        $counterOffer = $this->requestModel->getById($id);
         
-        if (!$counterOffer || !$counterOffer->is_counter_offer) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Contra-oferta no válida.']);
-            exit();
+        // Buscar negociación pendiente
+        $negotiation = $this->requestModel->getNegotiationBySolicitudId($id);
+        
+        if (!$negotiation) {
+             http_response_code(404);
+             echo json_encode(['success' => false, 'message' => 'No se encontró negociación activa.']);
+             exit();
         }
 
-        // Verificar que el usuario actual sea el destinatario de la contra-oferta
-        if ($counterOffer->solicitado_id != $_SESSION['usuario_id']) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'No tiene permisos para rechazar esta contra-oferta.']);
-            exit();
-        }
-
-        // Rechazar contra-oferta
-        $result = $this->requestModel->rejectCounterOffer(
-            $id,
-            $counterOffer->parent_request_id,
-            $_SESSION['usuario_id']
-        );
-
-        if ($result) {
-            $_SESSION['success_message'] = 'Contra-oferta rechazada. La solicitud ha sido marcada como rechazada.';
-            echo json_encode(['success' => true, 'message' => 'Contra-oferta rechazada. La solicitud ha sido marcada como rechazada.']);
+        if ($this->requestModel->rejectNegotiation($negotiation->id, $id)) {
+             echo json_encode(['success' => true, 'message' => 'Contra-oferta rechazada correctamente']);
         } else {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Error al rechazar la contra-oferta.']);
+             http_response_code(500);
+             echo json_encode(['success' => false, 'message' => 'Error al rechazar contra-oferta']);
         }
-        
         exit();
     }
 }

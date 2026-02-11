@@ -1,4 +1,104 @@
 <?php
+// Clase para la conexión a la base de datos usando MySQL (PDO)
+class Database {
+    private $host = DB_HOST;
+    private $user = DB_USER;
+    private $pass = DB_PASS;
+    private $dbname = DB_NAME;
+
+    private $dbh;
+    private $stmt;
+    private $error;
+
+    public function __construct() {
+        // Configurar conexión DSN
+        $dsn = 'mysql:host=' . $this->host . ';dbname=' . $this->dbname . ';charset=utf8mb4';
+        
+        $options = array(
+            PDO::ATTR_PERSISTENT => true,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        );
+
+        // Crear una nueva instancia de PDO
+        try {
+            $this->dbh = new PDO($dsn, $this->user, $this->pass, $options);
+            // $this->dbh->exec("set names utf8mb4"); // Ya incluido en DSN
+        } catch (PDOException $e) {
+            $this->error = $e->getMessage();
+            die('Error de conexión a la base de datos: ' . $this->error);
+        }
+    }
+
+    // Preparar consulta
+    public function query($sql) {
+        $this->stmt = $this->dbh->prepare($sql);
+    }
+
+    // Vincular variables
+    public function bind($param, $value, $type = null) {
+        if (is_null($type)) {
+            switch (true) {
+                case is_int($value):
+                    $type = PDO::PARAM_INT;
+                    break;
+                case is_bool($value):
+                    $type = PDO::PARAM_BOOL;
+                    break;
+                case is_null($value):
+                    $type = PDO::PARAM_NULL;
+                    break;
+                default:
+                    $type = PDO::PARAM_STR;
+            }
+        }
+        $this->stmt->bindValue($param, $value, $type);
+    }
+
+    // Ejecutar consulta y devolver true/false
+    public function execute() {
+        return $this->stmt->execute();
+    }
+
+    // Obtener un conjunto de registros como array de objetos
+    public function resultSet() {
+        $this->execute();
+        return $this->stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    // Obtener un solo registro como objeto
+    public function single() {
+        $this->execute();
+        return $this->stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    // Obtener cantidad de filas afectadas
+    public function rowCount() {
+        return $this->stmt->rowCount();
+    }
+
+    // Iniciar transacción
+    public function beginTransaction() {
+        return $this->dbh->beginTransaction();
+    }
+
+    // Confirmar transacción
+    public function commit() {
+        return $this->dbh->commit();
+    }
+
+    // Revertir transacción
+    public function rollBack() {
+        return $this->dbh->rollBack();
+    }
+    
+    // Cerrar conexión (opcional en PDO, sucede al destruir objeto)
+    public function __destruct() {
+        $this->dbh = null;
+    }
+}
+
+/*
+// CODIGO ANTERIOR (SQL SERVER - sqlsrv)
 // Clase para la conexión a la base de datos usando sqlsrv
 class Database {
     private $host = DB_HOST;
@@ -123,3 +223,4 @@ class Database {
         }
     }
 }
+*/

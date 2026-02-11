@@ -73,7 +73,7 @@
                         default => 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
                     };
                     ?>
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr id="request-row-<?php echo $req['id']; ?>" class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4">
                             <span class="font-mono text-blue-600 bg-blue-50 px-2.5 py-1 rounded text-xs font-medium border border-blue-100"><?php echo $req['id']; ?></span>
                         </td>
@@ -87,12 +87,13 @@
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="px-2.5 py-0.5 rounded-full text-xs font-medium border flex items-center gap-1.5 w-fit <?php echo $statusClass; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $statusDot; ?>"></span> <?php echo $req['estado']; ?>
+                            <span class="request-status px-2.5 py-0.5 rounded-full text-xs font-medium border flex items-center gap-1.5 w-fit <?php echo $statusClass; ?>">
+                                <span class="request-status-dot w-1.5 h-1.5 rounded-full <?php echo $statusDot; ?>"></span> 
+                                <span class="request-status-text"><?php echo $req['estado']; ?></span>
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <button onclick="openModal('<?php echo $req['id']; ?>')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all <?php echo $btnClass; ?>"><?php echo $req['accion']; ?></button>
+                            <button onclick="openModal('<?php echo $req['id']; ?>')" class="request-action-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all <?php echo $btnClass; ?>"><?php echo $req['accion']; ?></button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -202,8 +203,8 @@
                             Notas de la Contra-Oferta <span class="text-gray-400 font-normal">(Opcional)</span>
                         </label>
                         <textarea id="counterOfferNotes" rows="3"
-                                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-shadow resize-none"
-                                  placeholder="Explica los motivos de la modificación..."></textarea>
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-shadow resize-none"
+                                placeholder="Explica los motivos de la modificación..."></textarea>
                     </div>
                 </div>
 
@@ -308,7 +309,7 @@
         document.getElementById('counterAcceptedBanner').classList.add('hidden');
         
         // Check if this request has counter-offer data
-        const isNegotiation = req.estado.toLowerCase().includes('negociaci') && req.counter_offer_items && req.counter_offer_items.length > 0;
+        const isNegotiation = req.estado.toLowerCase().includes('negociación') && req.counter_offer_items && req.counter_offer_items.length > 0;
         const wasCounterOffered = req.was_counter_offered;
         
         if (isNegotiation && req.counter_offer_items) {
@@ -401,6 +402,9 @@
         const permissionInfo = document.getElementById('permissionInfo');
         let buttons = '';
         
+
+
+        // "Counter offer ID" se converte realmente en "solicitud_id" pero de mi tabla de negociaciones
         if (isNegotiation) {
             // Check if user can negotiate (original requester)
             if (req.puede_negociar) {
@@ -542,13 +546,13 @@
                         <div class="flex items-center gap-2">
                             <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Nueva cantidad:</label>
                             <input type="number" 
-                                   value="${item.cantidad}" 
-                                   min="1" 
-                                   max="${item.cantidad}"
-                                   class="w-24 px-3 py-2 text-right text-sm font-semibold border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" 
-                                   data-item-id="${item.id}"
-                                   data-item-index="${index}"
-                                   data-original-qty="${item.cantidad}">
+                                value="${item.cantidad}" 
+                                min="1" 
+                                max="${item.cantidad}"
+                                class="w-24 px-3 py-2 text-right text-sm font-semibold border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" 
+                                data-item-id="${item.id}"
+                                data-item-index="${index}"
+                                data-original-qty="${item.cantidad}">
                         </div>
                     </div>
                 </div>
@@ -599,6 +603,7 @@
     function submitCounterOffer(requestId) {
         const req = requestsData.find(r => r.id === requestId);
         if (!req) return;
+
         
         const msgDiv = document.getElementById('actionMessage');
         const actionsDiv = document.getElementById('modalActions');
@@ -606,9 +611,10 @@
         // Hide any previous messages
         msgDiv.classList.add('hidden');
         
-        // Get counter offer quantities
+        // Get counter offer quantities and build payload
         const inputs = document.querySelectorAll('#counterOfferItems input[type="number"]');
         const formData = new FormData();
+        const constructedItems = []; // To update local state later
         
         let hasChanges = false;
         inputs.forEach(input => {
@@ -616,25 +622,44 @@
             const newQty = parseInt(input.value);
             const itemIndex = parseInt(input.dataset.itemIndex);
             
+            // Validate input
+            if (isNaN(newQty) || newQty < 1) {
+                alert('La cantidad debe ser mayor a 0');
+                return;
+            }
+
             if (newQty !== originalQty) {
                 hasChanges = true;
             }
             
-            formData.append('producto_id[]', req.items_detail[itemIndex].id);
+            const originalItem = req.items_detail[itemIndex];
+            
+            formData.append('producto_id[]', originalItem.id);
             formData.append('cantidad[]', newQty);
-            formData.append('observaciones[]', req.items_detail[itemIndex].observaciones || '');
+            formData.append('observaciones[]', originalItem.observaciones || '');
+            
+            // Prepare item for local update
+            constructedItems.push({
+                id: originalItem.id,
+                nombre: originalItem.nombre,
+                sku: originalItem.sku,
+                cantidad: newQty,
+                observaciones: originalItem.observaciones || ''
+            });
         });
+
         
-        if (!hasChanges) {
+        // Get notes
+        const notes = document.getElementById('counterOfferNotes').value;
+        formData.append('counter_offer_notes', notes);
+
+
+        if (!hasChanges && !notes) {
             msgDiv.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
-            msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-info-circle"></i><span>No se detectaron cambios en las cantidades.</span></div>';
+            msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-info-circle"></i><span>No se detectaron cambios en las cantidades ni notas.</span></div>';
             msgDiv.classList.remove('hidden');
             return;
         }
-        
-        // Get notes
-        const notes = document.getElementById('counterOfferNotes').value.trim();
-        formData.append('counter_offer_notes', notes || 'Modificación de cantidades solicitadas');
         
         // Show loading state
         actionsDiv.innerHTML = `
@@ -649,24 +674,110 @@
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.text().then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Server returned non-JSON:', text);
+                    throw new Error('Server error: invalid response format');
+                }
+            });
+        })
         .then(data => {
             if (data.success) {
-                window.location.href = `${baseUrl}/requests.php`;
+                // Update Local Data Critical for UI Consistency
+                const reqIndex = requestsData.findIndex(r => r.id === requestId);
+                if (reqIndex !== -1) {
+                    requestsData[reqIndex].estado = 'En Negociación';
+                    requestsData[reqIndex].counter_offer_items = constructedItems;
+                    requestsData[reqIndex].counter_offer_id = data.counter_offer_id;
+                    requestsData[reqIndex].counter_offer_notes = notes;
+                    requestsData[reqIndex].was_counter_offered = false; // It is currently in negotiation
+                    
+                    // Update permissions locally
+                    requestsData[reqIndex].puede_actuar = false;
+                    requestsData[reqIndex].puede_negociar = false; // Requestor negotiates, not Modifier
+                    requestsData[reqIndex].accion = 'Ver Detalles';
+                }
+                
+                // Update DOM
+                updateRequestRow(requestId, 'En Negociación', 'Ver Detalles', 'slate');
+                
+                // Close modal and show success
+                closeModal();
+                showToast(data.message || 'Contra-oferta enviada exitosamente', 'success');
             } else {
-                msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                msgDiv.innerHTML = `<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>${data.message || 'Error al crear la contra-oferta.'}</span></div>`;
-                location.reload();
+                showErrorInModal(msgDiv, data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-            msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-            msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>Error al crear la contra-oferta.</span></div>';
-            location.reload();
+            showErrorInModal(msgDiv, 'Error al crear la contra-oferta: ' + error.message);
         });
+    }
+
+    // Helper to update row
+    function updateRequestRow(requestId, newStatus, newActionLabel, colorKey) {
+        const row = document.getElementById(`request-row-${requestId}`);
+        if (!row) return;
+
+        // Map colors
+        const statusColors = {
+            'Pendiente': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
+            'Aprobada': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+            'Rechazada': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' },
+            'En Negociación': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500' },
+            'Aprobada con Cambios': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', dot: 'bg-teal-500' },
+            'Completada': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' }
+        };
+        
+        const btnColors = {
+            'blue': 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm',
+            'amber': 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm',
+            'slate': 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
+            'green': 'bg-green-600 hover:bg-green-700 text-white shadow-sm'
+        };
+
+        const config = statusColors[newStatus] || statusColors['Pendiente'];
+        
+        // Update status badge
+        const statusSpan = row.querySelector('.request-status');
+        const statusDot = row.querySelector('.request-status-dot');
+        const statusText = row.querySelector('.request-status-text');
+        
+        // Reset classes
+        statusSpan.className = `request-status px-2.5 py-0.5 rounded-full text-xs font-medium border flex items-center gap-1.5 w-fit ${config.bg} ${config.text} ${config.border}`;
+        statusDot.className = `request-status-dot w-1.5 h-1.5 rounded-full ${config.dot}`;
+        statusText.textContent = newStatus;
+
+        // Update Button
+        const btn = row.querySelector('.request-action-btn');
+        btn.textContent = newActionLabel;
+        // Reset btn classes
+        btn.className = `request-action-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${btnColors[colorKey] || btnColors['slate']}`;
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 transition-opacity duration-300 z-50 ${type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`;
+        toast.innerHTML = `
+            <i class="fa-solid ${type === 'success' ? 'fa-check-circle text-green-600' : 'fa-exclamation-circle text-red-600'}"></i>
+            <span class="font-medium">${message}</span>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    function showErrorInModal(msgDiv, message) {
+        msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
+        msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
+        msgDiv.innerHTML = `<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>${message || 'Error desconocido.'}</span></div>`;
     }
 
     function performAction(action, requestId) {
@@ -676,117 +787,67 @@
         // Hide any previous messages
         msgDiv.classList.add('hidden');
 
-        // Show loading state in button area
+        // Show loading state
         actionsDiv.innerHTML = `
             <div class="flex items-center justify-center gap-3 w-full py-2">
                 <i class="fa-solid fa-spinner fa-spin text-blue-600 text-lg"></i>
-                <span class="text-gray-700 font-medium">Cargando...</span>
+                <span class="text-gray-700 font-medium">Procesando...</span>
             </div>
         `;
+        
+        let endpoint = '';
+        if (action === 'approve') endpoint = `aprobar/${requestId}`;
+        else if (action === 'reject') endpoint = `rechazar/${requestId}`;
+        else if (action === 'accept_counter') endpoint = `aceptar_contraoferta/${requestId}`;
+        else if (action === 'reject_counter') endpoint = `rechazar_contraoferta/${requestId}`;
 
-        if (action === 'approve') {
-            fetch(`${baseUrl}/requests.php/aprobar/${requestId}`, { 
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-
-                console.log('Response:', data);
-
-                if (data.success) {
-                    // Success - reload to show message
-                    window.location.href = `${baseUrl}/requests.php`;
-                } else {
-                    // Show error in modal
-                    msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                    msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                    msgDiv.innerHTML = `<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>${data.message || 'Error al aprobar la solicitud.'}</span></div>`;
-                    location.reload();
+        fetch(`${baseUrl}/requests.php/${endpoint}`, { 
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                
+                // Determine new status based on action
+                let newStatus = 'Pendiente';
+                let btnText = 'Ver Detalles';
+                let btnColor = 'slate';
+                
+                if (action === 'approve') newStatus = 'Aprobada';
+                else if (action === 'reject') newStatus = 'Rechazada';
+                else if (action === 'accept_counter') newStatus = 'Aprobada con Cambios';
+                else if (action === 'reject_counter') newStatus = 'Rechazada';
+                
+                // Update Local Data
+                const reqIndex = requestsData.findIndex(r => r.id === requestId);
+                if (reqIndex !== -1) {
+                    requestsData[reqIndex].estado = newStatus;
+                    requestsData[reqIndex].puede_actuar = false;
+                    requestsData[reqIndex].accion = btnText;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>Error al aprobar la solicitud.</span></div>';
-                location.reload();
-            });
-            
-        } else if (action === 'reject') {
-            // Llamada real al servidor
-            fetch(`${baseUrl}/requests.php/rechazar/${requestId}`, { 
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Success - reload to show message
-                    window.location.href = `${baseUrl}/requests.php`;
-                } else {
-                    // Show error in modal
-                    msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                    msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                    msgDiv.innerHTML = `<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>${data.message || 'Error al rechazar la solicitud.'}</span></div>`;
-                    location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>Error al rechazar la solicitud.</span></div>';
-                location.reload();
-            });
-            
-        } else if (action === 'accept_counter') {
-            // Accept counter-offer
-            fetch(`${baseUrl}/requests.php/aceptar_contraoferta/${requestId}`, { 
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.href = `${baseUrl}/requests.php`;
-                } else {
-                    msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                    msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                    msgDiv.innerHTML = `<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>${data.message || 'Error al aceptar la contra-oferta.'}</span></div>`;
-                    location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>Error al aceptar la contra-oferta.</span></div>';
-                location.reload();
-            });
-            
-        } else if (action === 'reject_counter') {
-            // Reject counter-offer
-            fetch(`${baseUrl}/requests.php/rechazar_contraoferta/${requestId}`, { 
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.href = `${baseUrl}/requests.php`;
-                } else {
-                    msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                    msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                    msgDiv.innerHTML = `<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>${data.message || 'Error al rechazar la contra-oferta.'}</span></div>`;
-                    location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                msgDiv.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
-                msgDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>Error al rechazar la contra-oferta.</span></div>';
-                location.reload();
-            });
-            
-        }
+                
+                // Update DOM
+                updateRequestRow(requestId, newStatus, btnText, btnColor);
+                
+                // Close modal and show success
+                closeModal();
+                showToast(data.message, 'success');
+            } else {
+                showErrorInModal(msgDiv, data.message);
+                 // Restore buttons after error? 
+                 // We'd need to rebuild buttons. Ideally, `openModal` builds them.
+                 // We can just reload to be safe on error, or just show error.
+                 // Showing error is safer, but buttons are gone.
+                 // Let's re-open modal logic? No, just close after error or let user close.
+                 // Actually, if we error, we stuck in loading state.
+                 // Let's reload modal content?
+                 setTimeout(() => closeModal(), 2000); // Close after 2s error
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showErrorInModal(msgDiv, 'Error de conexión.');
+        });
     }
 
     // Close modal when clicking backdrop

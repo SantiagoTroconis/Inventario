@@ -15,7 +15,6 @@ class RequestModel extends Database {
                      FROM solicitudes_inventario s
                      LEFT JOIN usuarios_inventario u1 ON s.solicitante_id = u1.usuario_id
                      LEFT JOIN usuarios_inventario u2 ON s.solicitado_id = u2.usuario_id
-                     WHERE (s.is_counter_offer = 0 OR s.is_counter_offer IS NULL)
                      ORDER BY s.fecha_solicitud DESC");
         return $this->resultSet();
     }
@@ -69,8 +68,8 @@ class RequestModel extends Database {
     // Crear nueva solicitud
     public function create($data) {
         $this->query("INSERT INTO solicitudes_inventario 
-                     (solicitante_id, solicitado_id, tipo, descripcion, estado, prioridad, fecha_solicitud, parent_request_id, is_counter_offer, counter_offer_notes) 
-                     VALUES (:solicitante_id, :solicitado_id, :tipo, :descripcion, :estado, :prioridad, GETDATE(), :parent_request_id, :is_counter_offer, :counter_offer_notes)");
+                     (solicitante_id, solicitado_id, tipo, descripcion, estado, prioridad, fecha_solicitud) 
+                     VALUES (:solicitante_id, :solicitado_id, :tipo, :descripcion, :estado, :prioridad, NOW())");
         
         $this->bind(':solicitante_id', $data['solicitante_id']);
         $this->bind(':solicitado_id', $data['solicitado_id'] ?? null);
@@ -78,9 +77,6 @@ class RequestModel extends Database {
         $this->bind(':descripcion', $data['descripcion'] ?? '');
         $this->bind(':estado', $data['estado'] ?? 'Pendiente');
         $this->bind(':prioridad', $data['prioridad'] ?? 'Normal');
-        $this->bind(':parent_request_id', $data['parent_request_id'] ?? null);
-        $this->bind(':is_counter_offer', $data['is_counter_offer'] ?? 0);
-        $this->bind(':counter_offer_notes', $data['counter_offer_notes'] ?? null);
         
         if ($this->execute()) {
             // Obtener el ID de la solicitud creada usando @@IDENTITY en lugar de SCOPE_IDENTITY()
@@ -194,13 +190,13 @@ class RequestModel extends Database {
     
     // Obtener solicitudes recientes
     public function getRecientes($limite = 10) {
-        $this->query("SELECT TOP :limite s.*, 
+        $this->query("SELECT s.*, 
                      u1.nombre as usuario_nombre,
                      u2.nombre as solicitado_nombre
                      FROM solicitudes_inventario s
                      LEFT JOIN usuarios_inventario u1 ON s.solicitante_id = u1.usuario_id
                      LEFT JOIN usuarios_inventario u2 ON s.solicitado_id = u2.usuario_id
-                     ORDER BY s.fecha_solicitud DESC");
+                     ORDER BY s.fecha_solicitud DESC LIMIT :limite");
         $this->bind(':limite', intval($limite));
         return $this->resultSet();
     }
@@ -215,103 +211,153 @@ class RequestModel extends Database {
                      LEFT JOIN usuarios_inventario u1 ON s.solicitante_id = u1.usuario_id
                      LEFT JOIN usuarios_inventario u2 ON s.solicitado_id = u2.usuario_id
                      WHERE s.solicitado_id = :usuario_id AND s.estado = 'Pendiente'
-                     ORDER BY s.fecha_solicitud DESC");
+                     ORDER BY s.fecha_solicitud DESC LIMIT :limite");
         $this->bind(':usuario_id', $usuario_id);
+        $this->bind(':limite', intval($limite));
         return $this->resultSet();
     }
     
-    // Crear contra-oferta (modificación de solicitud)
-    public function createCounterOffer($parent_request_id, $admin_id, $modified_details, $notes = '') {
-        // 1. Obtener solicitud original
-        $originalRequest = $this->getById($parent_request_id);
-        if (!$originalRequest) {
+    // Crear una nueva negociación
+    public function createNegotiation($solicitud_id, $usuario_id, $items, $notas = '') {
+        try {
+            $this->beginTransaction();
+
+            // 1. Crear registro de negociación
+            $this->query("INSERT INTO solicitud_negociaciones (solicitud_id, usuario_id, notas, estado) 
+                         VALUES (:solicitud_id, :usuario_id, :notas, 'Pendiente')");
+            $this->bind(':solicitud_id', $solicitud_id);
+            $this->bind(':usuario_id', $usuario_id);
+            $this->bind(':notas', $notas);
+            $this->execute();
+
+            $this->query("SELECT LAST_INSERT_ID() as id");
+            $negociacionId = $this->single()->id;
+
+            // 2. Insertar detalles
+            foreach ($items as $item) {
+                // Ensure observes is set
+                $observaciones = $item['observaciones'] ?? '';
+                $this->query("INSERT INTO solicitud_negociacion_detalles (negociacion_id, producto_id, cantidad_propuesta, observaciones) 
+                             VALUES (:negociacion_id, :producto_id, :cantidad, :observaciones)");
+                $this->bind(':negociacion_id', $negociacionId);
+                $this->bind(':producto_id', $item['producto_id']);
+                $this->bind(':cantidad', $item['cantidad']);
+                $this->bind(':observaciones', $observaciones);
+                $this->execute();
+            }
+
+            // 3. Actualizar estado de la solicitud original
+            $this->query("UPDATE solicitudes_inventario SET estado = 'En Negociación' WHERE id = :id");
+            $this->bind(':id', $solicitud_id);
+            $this->execute();
+
+            $this->commit();
+            return $negociacionId;
+
+        } catch (Exception $e) {
+            $this->rollBack();
             return false;
         }
-        
-        // 2. Crear nueva solicitud como contra-oferta (roles invertidos)
-        $counterOfferData = [
-            'solicitante_id' => $admin_id, // Admin ahora es el solicitante
-            'solicitado_id' => $originalRequest->solicitante_id, // Original solicitante ahora recibe
-            'tipo' => $originalRequest->tipo,
-            'descripcion' => 'Contra-oferta: ' . ($originalRequest->descripcion ?? ''),
-            'estado' => 'Pendiente',
-            'prioridad' => $originalRequest->prioridad,
-            'parent_request_id' => $parent_request_id,
-            'is_counter_offer' => 1,
-            'counter_offer_notes' => $notes
-        ];
-        
-        $counterOfferId = $this->create($counterOfferData);
-        
-        if ($counterOfferId) {
-            // 3. Agregar detalles modificados a la contra-oferta
-            foreach ($modified_details as $detail) {
-                $this->addDetalle(
-                    $counterOfferId,
-                    $detail['producto_id'],
-                    $detail['cantidad'],
-                    $detail['observaciones'] ?? ''
-                );
-            }
-            
-            // 4. Actualizar estado de solicitud original a "En Negociación"
-            $this->updateEstado($parent_request_id, 'En Negociación');
-            
-            return $counterOfferId;
+    }
+
+
+    public function getNegotiationBySolicitudId($solicitud_id) {
+        // Obtenemos la última negociación
+        $this->query("SELECT n.*, u.nombre as usuario_nombre 
+                        FROM solicitud_negociaciones n
+                        LEFT JOIN usuarios_inventario u ON n.usuario_id = u.usuario_id
+                        WHERE n.solicitud_id = :solicitud_id 
+                        ORDER BY n.fecha_creacion DESC LIMIT 1");
+        $this->bind(':solicitud_id', $solicitud_id);
+        $row = $this->single();
+    
+        if ($row) {
+            return $row;
         }
-        
         return false;
     }
-    
-    // Obtener contra-ofertas de una solicitud
-    public function getCounterOffers($parent_request_id) {
-        $this->query("SELECT s.*, 
-                     u1.nombre as usuario_nombre,
-                     u2.nombre as solicitado_nombre
-                     FROM solicitudes_inventario s
-                     LEFT JOIN usuarios_inventario u1 ON s.solicitante_id = u1.usuario_id
-                     LEFT JOIN usuarios_inventario u2 ON s.solicitado_id = u2.usuario_id
-                     WHERE s.parent_request_id = :parent_request_id
-                     AND s.is_counter_offer = 1
-                     ORDER BY s.fecha_solicitud DESC");
-        $this->bind(':parent_request_id', $parent_request_id);
+
+    // Obtener detalles de la negociación
+    public function getNegotiationDetails($negociacion_id) {
+        $this->query("SELECT d.*, p.nombre as producto_nombre, p.codigo as producto_codigo, d.cantidad_propuesta as cantidad
+                     FROM solicitud_negociacion_detalles d
+                     LEFT JOIN productos_inventario p ON d.producto_id = p.id
+                     WHERE d.negociacion_id = :id");
+        $this->bind(':id', $negociacion_id);
         return $this->resultSet();
     }
-    
-    // Aceptar contra-oferta
-    public function acceptCounterOffer($counter_offer_id, $parent_request_id, $user_id) {
-        // 1. Aprobar la contra-oferta
-        $this->updateEstado($counter_offer_id, 'Aprobada', $user_id);
-        
-        // 2. Actualizar solicitud original como "Aprobada con Cambios"
-        $this->updateEstado($parent_request_id, 'Aprobada con Cambios', $user_id);
-        
-        return true;
+
+    // Aceptar negociación
+    public function acceptNegotiation($negociacion_id, $solicitud_id, $usuario_id) {
+        try {
+            $this->beginTransaction();
+
+            // 1. Marcar negociación como Aceptada
+            $this->query("UPDATE solicitud_negociaciones SET estado = 'Aceptada' WHERE id = :id");
+            $this->bind(':id', $negociacion_id);
+            $this->execute();
+
+            // 2. Actualizar los items de la solicitud original con los valores de la negociación
+            $items = $this->getNegotiationDetails($negociacion_id);
+            
+            $this->query("DELETE FROM solicitud_detalles_inventario WHERE solicitud_id = :id");
+            $this->bind(':id', $solicitud_id);
+            $this->execute();
+
+            foreach ($items as $item) {
+                // $item->cantidad is aliased in getNegotiationDetails
+                $this->addDetalle($solicitud_id, $item->producto_id, $item->cantidad, $item->observaciones);
+            }
+
+            // 3. Aprobar la solicitud con estado especial
+            $this->query("UPDATE solicitudes_inventario 
+                         SET estado = 'Aprobada con Cambios', 
+                             usuario_aprobacion_id = :user_id,
+                             fecha_aprobacion = NOW()
+                         WHERE id = :id");
+            $this->bind(':user_id', $usuario_id);
+            $this->bind(':id', $solicitud_id);
+            $this->execute();
+
+            // Descontar Stock
+            foreach ($items as $item) {
+                 $this->query("UPDATE productos_inventario 
+                             SET stock = stock - :cantidad 
+                             WHERE id = :producto_id AND stock >= :cantidad");
+                 $this->bind(':cantidad', $item->cantidad); // Use aliased amount
+                 $this->bind(':producto_id', $item->producto_id);
+                 $this->execute();
+            }
+
+            $this->commit();
+            return true;
+
+        } catch (Exception $e) {
+            $this->rollBack();
+            return false;
+        }
     }
-    
-    // Rechazar contra-oferta
-    public function rejectCounterOffer($counter_offer_id, $parent_request_id, $user_id) {
-        // 1. Rechazar la contra-oferta
-        $this->updateEstado($counter_offer_id, 'Rechazada', $user_id);
-        
-        // 2. Rechazar también la solicitud original (fin del ciclo de negociación)
-        $this->updateEstado($parent_request_id, 'Rechazada');
-        
-        return true;
-    }
-    
-    // Obtener contra-oferta por parent_request_id
-    public function getCounterOfferByParentId($parent_id) {
-        $this->query("SELECT s.*, 
-                     u1.nombre as usuario_nombre,
-                     u2.nombre as solicitado_nombre
-                     FROM solicitudes_inventario s
-                     LEFT JOIN usuarios_inventario u1 ON s.solicitante_id = u1.usuario_id
-                     LEFT JOIN usuarios_inventario u2 ON s.solicitado_id = u2.usuario_id
-                     WHERE s.parent_request_id = :parent_id 
-                     AND s.is_counter_offer = 1
-                     ORDER BY s.fecha_solicitud DESC");
-        $this->bind(':parent_id', $parent_id);
-        return $this->single();
+
+    // Rechazar negociación
+    public function rejectNegotiation($negociacion_id, $solicitud_id) {
+        try {
+            $this->beginTransaction();
+
+            // 1. Marcar negociación como Rechazada
+            $this->query("UPDATE solicitud_negociaciones SET estado = 'Rechazada' WHERE id = :id");
+            $this->bind(':id', $negociacion_id);
+            $this->execute();
+
+            // 2. Marcar solicitud original como Rechazada también
+            $this->query("UPDATE solicitudes_inventario SET estado = 'Rechazada' WHERE id = :id");
+            $this->bind(':id', $solicitud_id);
+            $this->execute();
+
+            $this->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->rollBack();
+            return false;
+        }
     }
 }

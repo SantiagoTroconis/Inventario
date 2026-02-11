@@ -19,7 +19,7 @@ $action = trim($pathInfo, '/');
 if (empty($action)) {
     $action = 'index';
 }
-if (str_contains($action,'/')) {
+if (strpos($action, '/') !== false) {
     $parts = explode('/', $action);
     $action = $parts[0];
     $id = $parts[1] ?? null;
@@ -29,6 +29,20 @@ if (str_contains($action,'/')) {
 switch ($action) {
     case 'new':
         $controller->add();
+        break;
+    case 'edit':
+        if (isset($id)) {
+            $controller->edit($id);
+        } else {
+            $controller->index();
+        }
+        break;
+    case 'delete':
+        if (isset($id)) {
+            $controller->delete($id);
+        } else {
+            $controller->index();
+        }
         break;
     case 'sucursal':
         $controller->sucursal($id ?? null);
