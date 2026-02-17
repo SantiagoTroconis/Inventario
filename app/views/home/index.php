@@ -252,8 +252,8 @@ if (!function_exists('time_elapsed_string')) {
                 <div class="relative z-10">
                     <h3 class="font-bold text-xl mb-2">¿Necesitas Stock?</h3>
                     <p class="text-blue-100 text-sm mb-4">Solicita reabastecimiento al almacén central.</p>
-                    <a href="<?php echo URL_BASE; ?>/requests/nueva" class="inline-block w-full text-center px-4 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-lg hover:bg-blue-50 transition-colors">
-                        <i class="fa-solid fa-plus mr-2"></i> Crear Solicitud
+                    <a href="<?php echo URL_BASE; ?>/products.php" class="inline-block w-full text-center px-4 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-lg hover:bg-blue-50 transition-colors">
+                        <i class="fa-solid fa-plus mr-2"></i> Ver productos disponibles
                     </a>
                 </div>
                 <!-- Deco -->

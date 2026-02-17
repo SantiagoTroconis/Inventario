@@ -1,41 +1,38 @@
 <?php
 
 /**
- * Entries Page - Enrutador para Entries Controller
+ * Exits Page - Enrutador para Exits Controller
  */
 if (!defined('BASE_PATH')) {
     define('BASE_PATH', __DIR__);
 }
 
 require_once 'app/init.php';
-$controller = new Entries();
+$controller = new Exits();
 
 // 1. Identificar la acción usando PATH_INFO (URLs limpias sin query params)
 $pathInfo = $_SERVER['PATH_INFO'] ?? '/';
-$action = trim($pathInfo, '/');
+$segments = array_filter(explode('/', $pathInfo));
 
 // Si está vacío, usar 'index'
-if (empty($action)) {
-    $action = 'index';
-}
+$action = !empty($segments) ? array_shift($segments) : 'index';
 
 // 2. Ejecutar el método correspondiente
 switch ($action) {
-    case 'registrar':
-        $controller->registrar();
+    case 'crear':
+        $controller->crear();
         break;
+        
     case 'ver':
-        $controller->ver();
+        $id = !empty($segments) ? array_shift($segments) : null;
+        $controller->ver($id);
         break;
-    case 'eliminar':
-        $controller->eliminar();
+        
+    case 'estadisticas':
+        $controller->estadisticas();
         break;
+        
     case 'index':
-        $controller->index();
-        break;
-    case 'getProductosDisponibles':
-        $controller->getProductosDisponibles();
-        break;
     default:
         $controller->index();
         break;

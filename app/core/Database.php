@@ -59,6 +59,11 @@ class Database {
         return $this->stmt->execute();
     }
 
+    // Obtener el ID del último registro insertado
+    public function lastInsertId() {
+        return $this->dbh->lastInsertId();
+    }
+
     // Obtener un conjunto de registros como array de objetos
     public function resultSet() {
         $this->execute();

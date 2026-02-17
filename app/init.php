@@ -21,8 +21,12 @@ require_once BASE_PATH . '/app/controllers/Home.php';
 require_once BASE_PATH . '/app/controllers/Products.php';
 require_once BASE_PATH . '/app/controllers/Requests.php';
 require_once BASE_PATH . '/app/controllers/Entries.php';
+require_once BASE_PATH . '/app/controllers/Movements.php';
+require_once BASE_PATH . '/app/controllers/Exits.php';
 
 // Cargar modelos
 require_once BASE_PATH . '/app/models/UserModel.php';
 require_once BASE_PATH . '/app/models/ProductModel.php';
 require_once BASE_PATH . '/app/models/RequestModel.php';
+require_once BASE_PATH . '/app/models/EntriesModel.php';
+require_once BASE_PATH . '/app/models/MovementModel.php';  

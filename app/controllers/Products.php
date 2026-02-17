@@ -13,7 +13,8 @@ class Products extends Controller {
         $this->requestModel = new RequestModel();
     }
         
-    public function index() {
+    public function index() 
+    {
         if(!isset($_SESSION['usuario'])) {
             header('Location: ' . URL_BASE . '/auth');
             exit();
@@ -74,8 +75,8 @@ class Products extends Controller {
         $this->view('productos/index', $data);
     }
 
-
-    public function sucursal($sucursalId = null): void {
+    public function sucursal($sucursalId = null): void 
+    {
         if(!isset($_SESSION['usuario'])) {
             header('Location: ' . URL_BASE . '/auth.php');
             exit();
@@ -165,7 +166,8 @@ class Products extends Controller {
         $this->view('productos/index', $data);
     }
 
-    public function add() {
+    public function add() 
+    {
         if(!isset($_SESSION['usuario'])) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'No autorizado']);
@@ -216,7 +218,8 @@ class Products extends Controller {
         }
     }
 
-    public function edit($id) {
+    public function edit($id) 
+    {
         if(!isset($_SESSION['usuario'])) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'No autorizado']);
@@ -243,7 +246,7 @@ class Products extends Controller {
                 'nombre' => trim($_POST['nombre']),
                 'descripcion' => trim($_POST['descripcion'] ?? ''),
                 'categoria' => trim($_POST['categoria'] ?? ''),
-                'stock' => (int)($_POST['stock'] ?? 0),
+                // Stock is not editable here - only through Entradas/Salidas pages
                 'stock_minimo' => (int)($_POST['stock_minimo'] ?? 0),
                 'precio' => (float)$_POST['precio'],
                 'activo' => isset($_POST['activo']) ? 1 : 0
@@ -327,7 +330,8 @@ class Products extends Controller {
         }
     }
 
-    public function delete($id) {
+    public function delete($id) 
+    {
         if(!isset($_SESSION['usuario'])) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'No autorizado']);
@@ -343,8 +347,6 @@ class Products extends Controller {
         }
         exit();
     }
-
-
 
     // Metodo perteneciente a la clase de Requests.php
     public function solicitar()
@@ -401,7 +403,8 @@ class Products extends Controller {
         exit();
     }
 
-    private function getCategoryIcon($categoria) {
+    private function getCategoryIcon($categoria) 
+    {
         $icons = [
             'Electrónica' => 'fa-laptop',
             'Oficina' => 'fa-print',
@@ -413,7 +416,8 @@ class Products extends Controller {
         return $icons[$categoria] ?? 'fa-box';
     }
 
-    private function uploadImage($file) {
+    private function uploadImage($file) 
+    {
         $targetDir = "public/assets/img/products/";
         
         // Crear directorio si no existe
@@ -444,5 +448,21 @@ class Products extends Controller {
         } else {
             return ['success' => false, 'message' => 'Solo se permiten archivos JPG, JPEG, PNG, GIF y WEBP.'];
         }
+    }
+
+
+    public function getAll()
+    {
+        if(!isset($_SESSION['usuario'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No autorizado']);
+            exit();
+        }
+
+        $productos = $this->productModel->getAll();
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'data' => $productos]);
+        exit();
     }
 }

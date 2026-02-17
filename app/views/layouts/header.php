@@ -144,11 +144,17 @@ function isViewingSucursal($sucursalId)
                     <a href="<?php echo URL_BASE; ?>/entries.php" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('entries') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
                         <i class="fa-solid fa-dolly w-5 text-center"></i> Entradas
                     </a>
+                    <a href="<?php echo URL_BASE; ?>/movements.php" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('movements') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
+                        <i class="fa-solid fa-right-left w-5 text-center"></i> Movimientos
+                    </a>
 
-                    <?php if (isset($_SESSION['tipo_usuario']) && $_SESSION['tipo_usuario'] === 'Sucursal'): ?>
+                    <?php if (isset($_SESSION['tipo_usuario']) && ($_SESSION['tipo_usuario'] === 'Sucursal' || $_SESSION['tipo_usuario'] === 'Administrador')): ?>
                         <a href="<?php echo URL_BASE; ?>/exits.php" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('exits') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
                             <i class="fa-solid fa-truck-ramp-box w-5 text-center"></i> Salidas
                         </a>
+                    <?php endif; ?>
+
+                    <?php if (isset($_SESSION['tipo_usuario']) && $_SESSION['tipo_usuario'] === 'Sucursal'): ?>
                         <a href="<?php echo URL_BASE; ?>/products.php/sucursal" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('products/sucursal') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
                             <i class="fa-solid fa-boxes-stacked  w-5 text-center"></i> Inventario
                         </a>

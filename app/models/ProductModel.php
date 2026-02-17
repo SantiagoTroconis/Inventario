@@ -88,16 +88,29 @@ class ProductModel extends Database {
         return $this->execute();
     }
     
-    // Actualizar stock
-    public function updateStock($id, $cantidad, $operacion = 'sumar') {
-        if ($operacion === 'sumar') {
-            $this->query("UPDATE productos_inventario SET stock = stock + :cantidad WHERE id = :id");
-        } else {
-            $this->query("UPDATE productos_inventario SET stock = stock - :cantidad WHERE id = :id");
-        }
+    /**
+     * Actualizar stock de un producto (método directo - usado por MovementModel)
+     * @param int $id - ID del producto
+     * @param int $new_stock - Nuevo valor de stock
+     * @return bool - True si se actualizó correctamente
+     */
+    public function updateStock($id, $new_stock) {
+        $this->query("UPDATE Productos_Inventario SET stock = :stock WHERE id = :id");
         $this->bind(':id', $id);
-        $this->bind(':cantidad', $cantidad);
+        $this->bind(':stock', $new_stock);
         return $this->execute();
+    }
+    
+    /**
+     * Obtener stock actual de un producto
+     * @param int $id - ID del producto
+     * @return int - Stock actual o 0 si no existe
+     */
+    public function getCurrentStock($id) {
+        $this->query("SELECT stock FROM Productos_Inventario WHERE id = :id");
+        $this->bind(':id', $id);
+        $result = $this->single();
+        return $result ? (int)$result->stock : 0;
     }
     
     // Eliminar producto

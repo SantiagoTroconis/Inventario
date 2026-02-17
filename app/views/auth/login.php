@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión | National Unity</title>
+    <title>National Unity</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
@@ -38,7 +38,7 @@
     <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         <!-- Header Section -->
         <div class="p-8 pb-6 text-center border-b border-gray-50">
-            <h1 class="text-2xl font-bold text-gray-900 mb-2">Bienvenido</h1>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Sistema de Inventario</h1>
         </div>
 
         <!-- Login Form -->
@@ -50,7 +50,7 @@
                 </div>
             <?php endif; ?>
 
-            <form class="space-y-5" action="<?php echo URL_BASE; ?>/auth.php/login" method="POST" autocomplete="off">
+            <form class="flex flex-col gap-8" action="<?php echo URL_BASE; ?>/auth.php/login" method="POST" autocomplete="off">
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700 mb-1.5">Usuario</label>
                     <div class="relative">
@@ -70,12 +70,6 @@
                         </div>
                         <input type="password" id="password" name="password" required
                             class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div class="text-sm">
-                        <a href="#" class="font-medium text-blue-600 hover:text-blue-500">¿Olvidaste tu contraseña?</a>
                     </div>
                 </div>
 

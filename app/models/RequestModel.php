@@ -5,7 +5,8 @@ use BcMath\Number;
 class RequestModel extends Database {
     
     // Obtener todas las solicitudes (excluye contra-ofertas)
-    public function getAll() {
+    public function getAll()
+    {
         $this->query("SELECT s.*, 
                      u1.nombre as usuario_nombre, 
                      u1.tipo_usuario as tipo_usuario,
@@ -20,7 +21,8 @@ class RequestModel extends Database {
     }
     
     // Obtener solicitudes por estado
-    public function getByEstado($estado) {
+    public function getByEstado($estado) 
+    {
         $this->query("SELECT s.*, 
                      u1.nombre as usuario_nombre,
                      u2.nombre as solicitado_nombre
@@ -34,7 +36,8 @@ class RequestModel extends Database {
     }
     
     // Obtener solicitud por ID
-    public function getById($id) {
+    public function getById($id)
+    {
         $this->query("SELECT s.*, 
                      u1.nombre as usuario_nombre,
                      u2.nombre as solicitado_nombre
@@ -47,7 +50,8 @@ class RequestModel extends Database {
     }
     
     // Obtener solicitudes por usuario (como solicitante)
-    public function getByUsuario($usuario_id) {
+    public function getByUsuario($usuario_id) 
+    {
         $this->query("SELECT * FROM solicitudes_inventario 
                      WHERE solicitante_id = :usuario_id 
                      ORDER BY fecha_solicitud DESC");
@@ -56,7 +60,8 @@ class RequestModel extends Database {
     }
     
     // Obtener detalles de una solicitud
-    public function getDetalles($solicitud_id) {
+    public function getDetalles($solicitud_id) 
+    {
         $this->query("SELECT sd.*, p.nombre as producto_nombre, p.codigo as producto_codigo
                      FROM solicitud_detalles_inventario sd
                      LEFT JOIN productos_inventario p ON sd.producto_id = p.id
@@ -66,7 +71,8 @@ class RequestModel extends Database {
     }
     
     // Crear nueva solicitud
-    public function create($data) {
+    public function create($data) 
+    {
         $this->query("INSERT INTO solicitudes_inventario 
                      (solicitante_id, solicitado_id, tipo, descripcion, estado, prioridad, fecha_solicitud) 
                      VALUES (:solicitante_id, :solicitado_id, :tipo, :descripcion, :estado, :prioridad, NOW())");
@@ -91,7 +97,8 @@ class RequestModel extends Database {
     }
     
     // Agregar detalle a solicitud
-    public function addDetalle($solicitud_id, $producto_id, $cantidad, $observaciones = '') {
+    public function addDetalle($solicitud_id, $producto_id, $cantidad, $observaciones = '') 
+    {
         $this->query("INSERT INTO solicitud_detalles_inventario 
                      (solicitud_id, producto_id, cantidad, observaciones) 
                      VALUES (:solicitud_id, :producto_id, :cantidad, :observaciones)");
@@ -105,7 +112,8 @@ class RequestModel extends Database {
     }
     
     // Actualizar solicitud
-    public function update($id, $data) {
+    public function update($id, $data) 
+    {
         $this->query("UPDATE solicitudes_inventario 
                      SET tipo = :tipo, descripcion = :descripcion, 
                          estado = :estado, prioridad = :prioridad,
@@ -123,48 +131,80 @@ class RequestModel extends Database {
     }
     
     // Actualizar estado de solicitud
-    public function updateEstado($id, $estado, $usuario_aprobacion_id = null) {
-        // Si se está aprobando, primero descontar stock
-        if ($estado === 'Aprobada' || $estado === 'Aprobado') {
-            // Obtener detalles de la solicitud
-            $detalles = $this->getDetalles($id);
+    public function updateEstado($id, $estado, $usuario_aprobacion_id = null) 
+    {
+        try {
+            // Iniciar transacción
+            $this->beginTransaction();
             
-            // Descontar stock de cada producto
-            foreach ($detalles as $detalle) {
-                $this->query("UPDATE productos_inventario 
-                             SET stock = stock - :cantidad 
-                             WHERE id = :producto_id AND stock >= :cantidad");
-                $this->bind(':cantidad', $detalle->cantidad);
-                $this->bind(':producto_id', $detalle->producto_id);
+            // Si se está aprobando, registrar movimientos de salida
+            if ($estado === 'Aprobada' || $estado === 'Aprobado') {
+                // Obtener detalles de la solicitud
+                $detalles = $this->getDetalles($id);
                 
-                if (!$this->execute()) {
-                    // Si falla (por ejemplo, stock insuficiente), no continuar
+                // Obtener información de la solicitud para el usuario
+                $solicitud = $this->getById($id);
+                if (!$solicitud) {
+                    $this->rollBack();
                     return false;
                 }
+                
+                $movementModel = new MovementModel();
+                
+                // Registrar movimiento de salida por cada producto
+                foreach ($detalles as $detalle) {
+                    $movementResult = $movementModel->registerMovement([
+                        'producto_id' => $detalle->producto_id,
+                        'usuario_id' => $usuario_aprobacion_id ?? $solicitud->solicitante_id,
+                        'tipo_movimiento' => 'SALIDA_SOLICITUD',
+                        'cantidad' => $detalle->cantidad,
+                        'referencia_id' => $id,
+                        'comentario' => 'Salida por solicitud aprobada #' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    ]);
+                    
+                    if (!$movementResult['success']) {
+                        $this->rollBack();
+                        return false;
+                    }
+                }
             }
+            
+            // Actualizar el estado de la solicitud
+            if ($usuario_aprobacion_id) {
+                $this->query("UPDATE solicitudes_inventario 
+                             SET estado = :estado, 
+                                 usuario_aprobacion_id = :usuario_aprobacion_id,
+                                 fecha_aprobacion = Now()
+                             WHERE id = :id");
+                $this->bind(':estado', $estado);
+                $this->bind(':usuario_aprobacion_id', $usuario_aprobacion_id);
+                $this->bind(':id', intval($id));
+            } else {
+                $this->query("UPDATE solicitudes_inventario SET estado = :estado WHERE id = :id");
+                $this->bind(':estado', $estado);
+                $this->bind(':id', intval($id));
+            }
+            
+            if (!$this->execute()) {
+                $this->rollBack();
+                return false;
+            }
+            
+            // Confirmar transacción
+            $this->commit();
+            return true;
+            
+        } catch (Exception $e) {
+            if ($this->dbh->inTransaction()) {
+                $this->rollBack();
+            }
+            return false;
         }
-        
-        // Actualizar el estado de la solicitud
-        if ($usuario_aprobacion_id) {
-            $this->query("UPDATE solicitudes_inventario 
-                         SET estado = :estado, 
-                             usuario_aprobacion_id = :usuario_aprobacion_id,
-                             fecha_aprobacion = GETDATE()
-                         WHERE id = :id");
-            $this->bind(':estado', $estado);
-            $this->bind(':usuario_aprobacion_id', $usuario_aprobacion_id);
-            $this->bind(':id', intval($id));
-        } else {
-            $this->query("UPDATE solicitudes_inventario SET estado = :estado WHERE id = :id");
-            $this->bind(':estado', $estado);
-            $this->bind(':id', intval($id));
-        }
-        
-        return $this->execute();
     }
     
     // Eliminar solicitud
-    public function delete($id) {
+    public function delete($id) 
+    {
         // Primero eliminar detalles
         $this->query("DELETE FROM solicitud_detalles_inventario WHERE solicitud_id = :id");
         $this->bind(':id', intval($id));
@@ -177,7 +217,8 @@ class RequestModel extends Database {
     }
     
     // Obtener estadísticas de solicitudes
-    public function getStats() {
+    public function getStats() 
+    {
         $this->query("SELECT 
                      COUNT(*) as total,
                      SUM(CASE WHEN estado = 'Pendiente' THEN 1 ELSE 0 END) as pendientes,
@@ -189,7 +230,8 @@ class RequestModel extends Database {
     }
     
     // Obtener solicitudes recientes
-    public function getRecientes($limite = 10) {
+    public function getRecientes($limite = 10) 
+    {
         $this->query("SELECT s.*, 
                      u1.nombre as usuario_nombre,
                      u2.nombre as solicitado_nombre
@@ -202,7 +244,8 @@ class RequestModel extends Database {
     }
     
     // Obtener solicitudes pendientes dirigidas a un usuario específico
-    public function getPendingRequestsForUser($usuario_id, $limite = 10) {
+    public function getPendingRequestsForUser($usuario_id, $limite = 10) 
+    {
         $this->query("SELECT s.*, 
                      u1.nombre as usuario_nombre,
                      u1.tipo_usuario as solicitante_tipo,
@@ -218,7 +261,8 @@ class RequestModel extends Database {
     }
     
     // Crear una nueva negociación
-    public function createNegotiation($solicitud_id, $usuario_id, $items, $notas = '') {
+    public function createNegotiation($solicitud_id, $usuario_id, $items, $notas = '') 
+    {
         try {
             $this->beginTransaction();
 
@@ -261,7 +305,8 @@ class RequestModel extends Database {
     }
 
 
-    public function getNegotiationBySolicitudId($solicitud_id) {
+    public function getNegotiationBySolicitudId($solicitud_id) 
+    {
         // Obtenemos la última negociación
         $this->query("SELECT n.*, u.nombre as usuario_nombre 
                         FROM solicitud_negociaciones n
@@ -278,7 +323,8 @@ class RequestModel extends Database {
     }
 
     // Obtener detalles de la negociación
-    public function getNegotiationDetails($negociacion_id) {
+    public function getNegotiationDetails($negociacion_id) 
+    {
         $this->query("SELECT d.*, p.nombre as producto_nombre, p.codigo as producto_codigo, d.cantidad_propuesta as cantidad
                      FROM solicitud_negociacion_detalles d
                      LEFT JOIN productos_inventario p ON d.producto_id = p.id
@@ -288,7 +334,8 @@ class RequestModel extends Database {
     }
 
     // Aceptar negociación
-    public function acceptNegotiation($negociacion_id, $solicitud_id, $usuario_id) {
+    public function acceptNegotiation($negociacion_id, $solicitud_id, $usuario_id) 
+    {
         try {
             $this->beginTransaction();
 
@@ -339,7 +386,8 @@ class RequestModel extends Database {
     }
 
     // Rechazar negociación
-    public function rejectNegotiation($negociacion_id, $solicitud_id) {
+    public function rejectNegotiation($negociacion_id, $solicitud_id) 
+    {
         try {
             $this->beginTransaction();
 
@@ -359,5 +407,83 @@ class RequestModel extends Database {
             $this->rollBack();
             return false;
         }
+    }
+
+    /**
+     * Obtener productos de solicitudes aprobadas de un usuario (pendientes de recibir)
+     * @param int $usuario_id - ID del usuario
+     * @return array - Array de productos con cantidades solicitadas y pendientes
+     */
+    public function getApprovedProductsByUser($usuario_id) 
+    {
+        $this->query("SELECT 
+                        sd.id as detalle_id,
+                        sd.solicitud_id,
+                        sd.producto_id,
+                        sd.cantidad as cantidad_solicitada,
+                        sd.observaciones,
+                        p.nombre as producto_nombre,
+                        p.codigo as producto_codigo,
+                        p.categoria as producto_categoria,
+                        p.descripcion as producto_descripcion,
+                        s.fecha_solicitud,
+                        s.fecha_aprobacion,
+                        s.estado as solicitud_estado
+                      FROM Solicitud_Detalles_Inventario sd
+                      INNER JOIN Solicitudes_Inventario s ON sd.solicitud_id = s.id
+                      INNER JOIN Productos_Inventario p ON sd.producto_id = p.id
+                      WHERE s.solicitante_id = :usuario_id 
+                      AND (s.estado = 'Aprobada' OR s.estado = 'Aprobado' OR s.estado = 'Aprobada con Cambios')
+                      ORDER BY s.fecha_aprobacion DESC, p.nombre ASC");
+        
+        $this->bind(':usuario_id', $usuario_id);
+        return $this->resultSet();
+    }
+
+    /**
+     * Verificar si un usuario tiene un producto en solicitudes aprobadas
+     * @param int $usuario_id - ID del usuario
+     * @param int $producto_id - ID del producto
+     * @return object|bool - Detalle de la solicitud o false
+     */
+    public function userHasApprovedProduct($usuario_id, $producto_id) 
+    {
+        $this->query("SELECT 
+                        sd.id as detalle_id,
+                        sd.solicitud_id,
+                        sd.cantidad as cantidad_solicitada,
+                        s.estado as solicitud_estado
+                      FROM Solicitud_Detalles_Inventario sd
+                      INNER JOIN Solicitudes_Inventario s ON sd.solicitud_id = s.id
+                      WHERE s.solicitante_id = :usuario_id 
+                      AND sd.producto_id = :producto_id
+                      AND (s.estado = 'Aprobada' OR s.estado = 'Aprobado' OR s.estado = 'Aprobada con Cambios')
+                      LIMIT 1");
+        
+        $this->bind(':usuario_id', $usuario_id);
+        $this->bind(':producto_id', $producto_id);
+        return $this->single();
+    }
+
+    /**
+     * Obtener solicitudes aprobadas pendientes de recibir de un usuario
+     * @param int $usuario_id - ID del usuario
+     * @return array - Array de solicitudes aprobadas
+     */
+    public function getApprovedPendingReceipt($usuario_id) 
+    {
+        $this->query("SELECT DISTINCT
+                        s.*,
+                        u1.nombre as solicitante_nombre,
+                        u2.nombre as aprobador_nombre
+                      FROM Solicitudes_Inventario s
+                      INNER JOIN Usuarios_Inventario u1 ON s.solicitante_id = u1.usuario_id
+                      LEFT JOIN Usuarios_Inventario u2 ON s.usuario_aprobacion_id = u2.usuario_id
+                      WHERE s.solicitante_id = :usuario_id 
+                      AND (s.estado = 'Aprobada' OR s.estado = 'Aprobado' OR s.estado = 'Aprobada con Cambios')
+                      ORDER BY s.fecha_aprobacion DESC");
+        
+        $this->bind(':usuario_id', $usuario_id);
+        return $this->resultSet();
     }
 }
