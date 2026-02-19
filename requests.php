@@ -23,8 +23,6 @@ if ($pathInfo) {
     $action = $parts[0] ?? 'index';
     $id = $parts[1] ?? null;
 } elseif (isset($_GET['action'])) {
-    // Fallback logic for /requests.php?action=aprobar&id=123
-    // This saves you if the server config blocks PATH_INFO
     $action = $_GET['action'];
     $id = $_GET['id'] ?? null;
 }

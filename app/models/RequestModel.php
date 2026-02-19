@@ -152,6 +152,7 @@ class RequestModel extends Database {
                 $movementModel = new MovementModel();
                 
                 // Registrar movimiento de salida por cada producto
+                // Pasar false para no usar transacción interna (ya estamos en una transacción)
                 foreach ($detalles as $detalle) {
                     $movementResult = $movementModel->registerMovement([
                         'producto_id' => $detalle->producto_id,
@@ -160,9 +161,19 @@ class RequestModel extends Database {
                         'cantidad' => $detalle->cantidad,
                         'referencia_id' => $id,
                         'comentario' => 'Salida por solicitud aprobada #' . str_pad($id, 4, '0', STR_PAD_LEFT)
-                    ]);
+                    ], false);
                     
                     if (!$movementResult['success']) {
+                        $this->rollBack();
+                        return false;
+                    }
+                    
+                    // Actualizar stock en nuestra conexión (MovementModel no lo hace cuando useTransaction=false)
+                    $this->query("UPDATE Productos_Inventario SET stock = :stock WHERE id = :id");
+                    $this->bind(':stock', $movementResult['stock_actual']);
+                    $this->bind(':id', $detalle->producto_id);
+                    
+                    if (!$this->execute()) {
                         $this->rollBack();
                         return false;
                     }

@@ -1,9 +1,6 @@
 <?php require_once BASE_PATH . '/app/views/layouts/header.php'; ?>
 
 <?php
-// Helper function for time elapsed in PHP directly in view for simplicity, 
-// usually this goes in a Helper class but for this refactor I'll include it here or assume it exists.
-// Logic added here to ensure it works without external dependencies.
 if (!function_exists('time_elapsed_string')) {
     function time_elapsed_string($datetime, $full = false) {
         if (empty($datetime)) {
@@ -170,7 +167,7 @@ if (!function_exists('time_elapsed_string')) {
                         <i class="fa-solid fa-user-plus text-xl mb-2"></i>
                         <span class="text-xs font-medium">Nuevo Usuario</span>
                     </a>
-                    <a href="<?php echo URL_BASE; ?>/products/create" class="flex flex-col items-center justify-center p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-colors backdrop-blur-sm">
+                    <a href="<?php echo URL_BASE; ?>/products.php/new" class="flex flex-col items-center justify-center p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-colors backdrop-blur-sm">
                         <i class="fa-solid fa-box-open text-xl mb-2"></i>
                         <span class="text-xs font-medium">Nuevo Producto</span>
                     </a>
@@ -227,7 +224,7 @@ if (!function_exists('time_elapsed_string')) {
                                 "<?php echo htmlspecialchars($req->descripcion ?: 'Sin descripción'); ?>"
                             </p>
                             <div class="flex gap-2">
-                                <a href="<?php echo URL_BASE; ?>/requests/ver/<?php echo $req->id; ?>" class="flex-1 text-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200">
+                                <a href="<?php echo URL_BASE; ?>/requests.php" class="flex-1 text-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200">
                                     Revisar
                                 </a>
                             </div>
@@ -293,9 +290,9 @@ if (!function_exists('time_elapsed_string')) {
                     <div class="w-16 h-16 bg-white/20 rounded-2xl backdrop-blur flex items-center justify-center mx-auto mb-4 shadow-inner group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-hand-holding-box text-3xl"></i>
                     </div>
-                    <h2 class="text-2xl font-bold mb-2">Solicitar Material</h2>
-                    <p class="text-white/80 mb-6 text-sm">¿Necesitas equipos o insumos? Crea una solicitud ahora.</p>
-                    <a href="<?php echo URL_BASE; ?>/requests/nueva" class="block w-full py-3 px-6 bg-white text-purple-600 font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-transform transform active:scale-95">
+                    <h2 class="text-2xl font-bold mb-2">Solicitar INventario</h2>
+                    <p class="text-white/80 mb-6 text-sm">Crea una solicitud ahora.</p>
+                    <a href="<?php echo URL_BASE; ?>/products.php/sucursal/4" class="block w-full py-3 px-6 bg-white text-purple-600 font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-transform transform active:scale-95">
                         <i class="fa-solid fa-plus-circle mr-2"></i> Nueva Solicitud
                     </a>
                 </div>
@@ -384,9 +381,7 @@ if (!function_exists('time_elapsed_string')) {
                                                 <?php echo $req->estado; ?>
                                             </span>
                                         </div>
-                                        <a href="<?php echo URL_BASE; ?>/requests/ver/<?php echo $req->id; ?>" class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors">
-                                            <i class="fa-solid fa-chevron-right"></i>
-                                        </a>
+                                        
                                     </div>
                                 </div>
                             <?php endforeach; ?>

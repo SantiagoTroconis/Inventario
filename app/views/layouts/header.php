@@ -220,18 +220,5 @@ function isViewingSucursal($sucursalId)
 
         <!-- Main Content Wrapper -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <header class="bg-white border-b border-gray-100 h-16 flex items-center justify-between px-6 z-10 shadow-sm">
-                <button class="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none"><i class="fa-solid fa-bars text-xl"></i></button>
-                <div class="hidden md:flex items-center gap-2">
-                    <h1 class="text-lg font-semibold text-gray-800"><?php echo isset($pageTitle) ? $pageTitle : 'Dashboard'; ?></h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <button class="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                        <i class="fa-solid fa-bell"></i>
-                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                    </button>
-                    <div class="md:hidden w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold"><?php echo substr($_SESSION['usuario'] ?? 'A', 0, 1); ?></div>
-                </div>
-            </header>
             <main class="flex-1 overflow-y-auto p-6 scroll-smooth bg-gray-50">
-                <div class="max-w-7xl mx-auto">
+                <div class="max-w-7xl mx-auto pt-4">

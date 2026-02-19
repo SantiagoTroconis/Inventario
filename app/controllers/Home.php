@@ -46,7 +46,6 @@ class Home extends Controller
                 ['label' => 'Total Solicitudes', 'value' => $stats ? $stats->total : 0, 'icon' => 'fa-clipboard-list', 'color' => 'blue-600', 'bg' => 'blue-50'],
                 ['label' => 'Pendientes', 'value' => $stats ? $stats->pendientes : 0, 'icon' => 'fa-clock', 'color' => 'amber-500', 'bg' => 'amber-50'],
                 ['label' => 'Total Productos', 'value' => $prodStats ? $prodStats->total_productos : 0, 'icon' => 'fa-boxes-stacked', 'color' => 'emerald-600', 'bg' => 'emerald-50'],
-                ['label' => 'Valor Inventario', 'value' => '$' . number_format($prodStats ? $prodStats->valor_inventario : 0, 2), 'icon' => 'fa-sack-dollar', 'color' => 'purple-600', 'bg' => 'purple-50'],
             ];
 
             // Recent System Activity (All latest requests)
@@ -69,7 +68,6 @@ class Home extends Controller
             $data['kpis'] = [
                 ['label' => 'Mis Productos', 'value' => $sucursalStats ? $sucursalStats->total_productos : 0, 'icon' => 'fa-box', 'color' => 'blue-600', 'bg' => 'blue-50'],
                 ['label' => 'Bajo Stock', 'value' => $sucursalStats ? $sucursalStats->productos_bajo_stock : 0, 'icon' => 'fa-triangle-exclamation', 'color' => 'red-500', 'bg' => 'red-50'],
-                ['label' => 'Valor Stock', 'value' => '$' . number_format($sucursalStats ? $sucursalStats->valor_inventario : 0, 2), 'icon' => 'fa-chart-line', 'color' => 'emerald-600', 'bg' => 'emerald-50'],
             ];
 
             // Incoming Requests (Requests directed TO this sucursal)

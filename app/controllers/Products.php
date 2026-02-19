@@ -20,6 +20,21 @@ class Products extends Controller {
             exit();
         }
 
+        // Verificar que solo Administradores puedan acceder al Inventario General
+        if ($_SESSION['tipo_usuario'] !== 'Administrador') {
+            // Redirigir según el tipo de usuario
+            if ($_SESSION['tipo_usuario'] === 'Sucursal') {
+                // Sucursales van a su propio inventario
+                header('Location: ' . URL_BASE . '/products.php/sucursal');
+                exit();
+            } else {
+                // Agentes y otros usuarios no tienen acceso
+                $_SESSION['error_message'] = 'No tienes permisos para acceder al Inventario General.';
+                header('Location: ' . URL_BASE . '/home.php');
+                exit();
+            }
+        }
+
         // Obtener productos de la base de datos
         $productosDb = $this->productModel->getAll();
         
@@ -174,6 +189,13 @@ class Products extends Controller {
             exit();
         }
 
+        // Solo Administradores pueden agregar productos al inventario general
+        if ($_SESSION['tipo_usuario'] !== 'Administrador') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);
+            exit();
+        }
+
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header('Content-Type: application/json');
             
@@ -223,6 +245,13 @@ class Products extends Controller {
         if(!isset($_SESSION['usuario'])) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'No autorizado']);
+            exit();
+        }
+
+        // Solo Administradores pueden editar productos del inventario general
+        if ($_SESSION['tipo_usuario'] !== 'Administrador') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);
             exit();
         }
 
@@ -335,6 +364,13 @@ class Products extends Controller {
         if(!isset($_SESSION['usuario'])) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'No autorizado']);
+            exit();
+        }
+
+        // Solo Administradores pueden eliminar productos del inventario general
+        if ($_SESSION['tipo_usuario'] !== 'Administrador') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);
             exit();
         }
 

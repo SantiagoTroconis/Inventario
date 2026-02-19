@@ -6,24 +6,30 @@ class MovementModel extends Database {
      * Registrar un movimiento de inventario
      * Este método maneja TODO: obtener stock actual, calcular nuevo stock, registrar movimiento, actualizar producto
      * @param array $data - [producto_id, usuario_id, tipo_movimiento, cantidad, referencia_id, comentario]
+     * @param bool $useTransaction - Si false, no inicia/confirma transacción (para uso dentro de otra transacción)
      * @return array - ['success' => bool, 'message' => string, 'movement_id' => int|null]
      */
-    public function registerMovement($data) {
+    public function registerMovement($data, $useTransaction = true) {
         try {
             // Validar datos requeridos
             if (empty($data['producto_id']) || empty($data['usuario_id']) || empty($data['tipo_movimiento']) || !isset($data['cantidad'])) {
                 return ['success' => false, 'message' => 'Datos incompletos para registrar movimiento', 'movement_id' => null];
             }
 
-            // Iniciar transacción
-            $this->beginTransaction();
+            // Iniciar transacción solo si no estamos dentro de otra
+            if ($useTransaction) {
+                $this->beginTransaction();
+            }
 
             // 1. Obtener stock actual del producto
-            $productModel = new ProductModel();
-            $producto = $productModel->getById($data['producto_id']);
+            $this->query("SELECT * FROM Productos_Inventario WHERE id = :id");
+            $this->bind(':id', $data['producto_id']);
+            $producto = $this->single();
             
             if (!$producto) {
-                $this->rollBack();
+                if ($useTransaction) {
+                    $this->rollBack();
+                }
                 return ['success' => false, 'message' => 'Producto no encontrado', 'movement_id' => null];
             }
 
@@ -41,24 +47,30 @@ class MovementModel extends Database {
                     break;
                     
                 case 'SALIDA_SOLICITUD':
+                    // Disminuye stock
+                    $stock_actual = $stock_anterior - abs($cantidad);
+                    break;
                 case 'SALIDA_MANUAL':
                     // Disminuye stock
                     $stock_actual = $stock_anterior - abs($cantidad);
                     break;
                     
                 case 'AJUSTE_INVENTARIO':
-                    // Puede ser + o - (cantidad ya viene con signo)
                     $stock_actual = $stock_anterior + $cantidad;
                     break;
                     
                 default:
-                    $this->rollBack();
+                    if ($useTransaction) {
+                        $this->rollBack();
+                    }
                     return ['success' => false, 'message' => 'Tipo de movimiento no válido', 'movement_id' => null];
             }
 
             // 3. Validar que el stock no sea negativo
             if ($stock_actual < 0) {
-                $this->rollBack();
+                if ($useTransaction) {
+                    $this->rollBack();
+                }
                 return [
                     'success' => false, 
                     'message' => "Stock insuficiente. Stock actual: {$stock_anterior}, Intentando retirar: {$cantidad}",
@@ -81,20 +93,32 @@ class MovementModel extends Database {
             $this->bind(':comentario', $data['comentario'] ?? null);
             
             if (!$this->execute()) {
-                $this->rollBack();
+                if ($useTransaction) {
+                    $this->rollBack();
+                }
                 return ['success' => false, 'message' => 'Error al registrar el movimiento', 'movement_id' => null];
             }
 
             $movement_id = $this->lastInsertId();
 
             // 5. Actualizar stock del producto
-            if (!$productModel->updateStock($data['producto_id'], $stock_actual)) {
-                $this->rollBack();
-                return ['success' => false, 'message' => 'Error al actualizar el stock del producto', 'movement_id' => null];
+            // Solo actualizar si estamos manejando nuestra propia transacción
+            // Si estamos dentro de otra transacción, el llamante debe actualizar el stock
+            if ($useTransaction) {
+                $this->query("UPDATE Productos_Inventario SET stock = :stock WHERE id = :id");
+                $this->bind(':id', $data['producto_id']);
+                $this->bind(':stock', $stock_actual);
+                
+                if (!$this->execute()) {
+                    $this->rollBack();
+                    return ['success' => false, 'message' => 'Error al actualizar el stock del producto', 'movement_id' => null];
+                }
             }
 
-            // Confirmar transacción
-            $this->commit();
+            // Confirmar transacción solo si la iniciamos aquí
+            if ($useTransaction) {
+                $this->commit();
+            }
             
             return [
                 'success' => true, 
@@ -105,7 +129,7 @@ class MovementModel extends Database {
             ];
 
         } catch (Exception $e) {
-            if ($this->dbh->inTransaction()) {
+            if ($useTransaction && $this->dbh->inTransaction()) {
                 $this->rollBack();
             }
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage(), 'movement_id' => null];
