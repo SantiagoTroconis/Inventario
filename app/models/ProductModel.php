@@ -166,4 +166,27 @@ class ProductModel extends Database {
         $this->bind(':limite', $limite);
         return $this->resultSet();
     }
+
+    /**
+     * Salud de stock de todos los productos (para el reporte de salud)
+     * Retorna todos los productos con el porcentaje de stock vs mínimo
+     */
+    public function getStockHealthAll() {
+        $this->query("SELECT
+                        id, nombre, codigo, categoria, stock, stock_minimo, activo,
+                        CASE
+                            WHEN stock_minimo = 0 THEN 100
+                            ELSE ROUND((stock / stock_minimo) * 100, 1)
+                        END AS stock_pct,
+                        CASE
+                            WHEN stock_minimo = 0 THEN 'healthy'
+                            WHEN stock <= (stock_minimo * 0.5) THEN 'critical'
+                            WHEN stock <= stock_minimo THEN 'warning'
+                            ELSE 'healthy'
+                        END AS health_status
+                      FROM Productos_Inventario
+                      WHERE activo = 1
+                      ORDER BY stock_pct ASC");
+        return $this->resultSet();
+    }
 }

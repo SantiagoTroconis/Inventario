@@ -1,58 +1,49 @@
 <?php require_once BASE_PATH . '/app/views/layouts/header.php'; ?>
 
-<!-- Success/Error Messages -->
-<?php if (isset($_SESSION['success_message'])): ?>
-<div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-3">
-    <i class="fa-solid fa-check-circle text-green-600"></i>
-    <span><?php echo $_SESSION['success_message']; unset($_SESSION['success_message']); ?></span>
-</div>
-<?php endif; ?>
 
-<?php if (isset($_SESSION['error_message'])): ?>
-<div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-3">
-    <i class="fa-solid fa-exclamation-circle text-red-600"></i>
-    <span><?php echo $_SESSION['error_message']; unset($_SESSION['error_message']); ?></span>
-</div>
-<?php endif; ?>
-
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+<!-- Page Header -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <?php if ($esSucursal):?>
-                <h2 class="text-xl font-bold text-gray-800">Inventario de Sucursal</h2>
-                <p class="text-gray-500 text-sm">Visualiza y gestiona tu propio inventario.</p>
+                <h2 class="text-xl font-bold text-gray-900">Inventario de Sucursal</h2>
+                <p class="text-gray-500 text-sm mt-0.5">Visualiza y gestiona tu propio inventario.</p>
             <?php else: ?>
-                <h2 class="text-xl font-bold text-gray-800">Inventario General</h2>
-                <p class="text-gray-500 text-sm">Visualiza y gestiona el inventario general.</p>
+                <h2 class="text-xl font-bold text-gray-900">Inventario General</h2>
+                <p class="text-gray-500 text-sm mt-0.5">Visualiza y gestiona el inventario general.</p>
             <?php endif; ?>
         </div>
         <div class="flex gap-3">
             <?php if ($tipo_usuario === 'Administrador'): ?>
-                <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                <button onclick="openModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
                     <i class="fa-solid fa-plus"></i> Nuevo Producto
                 </button>
             <?php endif; ?>
-            <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium rounded-lg transition-colors">
+            <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-lg transition-colors">
                 <i class="fa-solid fa-file-export"></i> Exportar
             </button>
         </div>
     </div>
+</div>
+
+<!-- Table -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
 
     <!-- Products Table -->
-    <div class="overflow-x-auto rounded-lg border border-gray-200">
-        <table id="productosTable" class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+    <div class="overflow-x-auto">
+        <table id="productosTable" class="w-full text-sm">
+            <thead class="text-xs text-gray-500 uppercase bg-gray-50">
                 <tr>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Imagen</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Código</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Producto</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Categoría</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Estado</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Stock</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Acciones</th>
+                    <th class="px-4 py-3 text-left font-semibold">Imagen</th>
+                    <th class="px-4 py-3 text-left font-semibold">Código</th>
+                    <th class="px-4 py-3 text-left font-semibold">Producto</th>
+                    <th class="px-4 py-3 text-left font-semibold">Categoría</th>
+                    <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                    <th class="px-4 py-3 text-left font-semibold">Stock</th>
+                    <th class="px-4 py-3 text-left font-semibold">Acciones</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
+            <tbody class="divide-y divide-gray-100">
                 <?php foreach ($productos as $producto): ?>
                     <?php
                     // Determine Badge Colors
@@ -75,7 +66,7 @@
                     };
                     ?>
                     <tr id="product-row-<?php echo $producto['id']; ?>" class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3">
                             <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
                                 <?php if (!empty($producto['imagen'])): ?>
                                     <img src="<?php echo URL_BASE; ?>/public/assets/img/products/<?php echo $producto['imagen']; ?>" alt="<?php echo $producto['nombre']; ?>" class="w-full h-full object-cover">
@@ -84,12 +75,12 @@
                                 <?php endif; ?>
                             </div>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3">
                             <span class="product-code font-mono text-blue-600 bg-blue-50 px-2.5 py-1 rounded text-xs font-medium border border-blue-100">
                                 <?php echo $producto['codigo']; ?>
                             </span>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
                                     <i class="product-icon fa-solid <?php echo $producto['icon']; ?>"></i>
@@ -100,8 +91,8 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="product-category px-6 py-4"><?php echo $producto['categoria']; ?></td>
-                        <td class="px-6 py-4">
+                        <td class="product-category px-4 py-3 text-gray-600"><?php echo $producto['categoria']; ?></td>
+                        <td class="px-4 py-3">
                             <div class="flex items-center gap-1.5">
                                 <div class="product-status-dot w-2 h-2 rounded-full <?php echo $dotColorClass; ?>"></div>
                                 <span class="product-status-text font-medium <?php echo $statusTextColor; ?>">
@@ -109,7 +100,7 @@
                                 </span>
                             </div>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3">
                             <?php if ($tipo_usuario === 'Administrador' || ($tipo_usuario === 'Sucursal' && $esSucursal)): ?>
                                 <span class="product-stock px-2.5 py-0.5 rounded-full text-xs font-semibold border <?php echo $badgeColorClass; ?>">
                                     <?php echo $producto['stock']; ?>
@@ -120,7 +111,7 @@
                                 </button>
                             <?php endif; ?>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <?php if ($tipo_usuario === 'Administrador' || ($tipo_usuario === 'Sucursal' && $esSucursal)): ?>
                                     <button class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-100" onclick="openEditModal('<?php echo $producto['id']; ?>')">
@@ -345,17 +336,17 @@
                         <i class="fa-solid fa-paper-plane mr-2"></i>Solicitar Producto
                     </button>
                     
-                     <div id="detailUserInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
-                         <div class="flex gap-2">
-                             <i class="fa-solid fa-info-circle text-blue-600 mt-0.5"></i>
-                             <div>
-                                 <p class="text-sm font-semibold text-blue-900 mb-1">Información</p>
-                                 <p class="text-sm text-blue-700">
-                                     Utiliza este botón para solicitar unidades adicionales de este producto a la administración o central.
-                                 </p>
-                             </div>
-                         </div>
-                     </div>
+                    <div id="detailUserInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
+                        <div class="flex gap-2">
+                            <i class="fa-solid fa-info-circle text-blue-600 mt-0.5"></i>
+                            <div>
+                                <p class="text-sm font-semibold text-blue-900 mb-1">Información</p>
+                                <p class="text-sm text-blue-700">
+                                    Utiliza este botón para solicitar unidades adicionales de este producto a la administración o central.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -454,12 +445,9 @@
                                 </select>
                             </div>
                             <div>
-                                <label for="editPrecio" class="block text-sm font-semibold text-gray-700 mb-1">Precio</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                                    <input type="number" id="editPrecio" name="precio" step="0.01" min="0" required
-                                        class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-shadow">
-                                </div>
+                                <label for="editStockMinimo" class="block text-sm font-semibold text-gray-700 mb-1">Stock Mínimo</label>
+                                <input type="number" id="editStockMinimo" name="stock_minimo" min="0" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-shadow">
                             </div>
                         </div>
 
@@ -468,15 +456,12 @@
                                 <label for="editStock" class="block text-sm font-semibold text-gray-700 mb-1">Stock Actual</label>
                                 <input type="number" id="editStock" name="stock" min="0" disabled
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed outline-none">
+                            </div>
+                            <div class="mt-6">
                                 <p class="text-xs text-amber-600 mt-1 flex items-center gap-1">
                                     <i class="fa-solid fa-lock"></i> 
                                     El stock solo se modifica desde <a href="<?php echo URL_BASE; ?>/entries.php" class="underline hover:text-amber-700">Entradas</a> o <a href="<?php echo URL_BASE; ?>/exits.php" class="underline hover:text-amber-700">Salidas</a>
                                 </p>
-                            </div>
-                            <div>
-                                <label for="editStockMinimo" class="block text-sm font-semibold text-gray-700 mb-1">Stock Mínimo</label>
-                                <input type="number" id="editStockMinimo" name="stock_minimo" min="0" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-shadow">
                             </div>
                         </div>
 
@@ -778,8 +763,6 @@
         document.getElementById('editCodigo').value = product.codigo;
         document.getElementById('editCategoria').value = product.categoria;
         
-        const priceValue = product.precio.replace('$', '').replace(/,/g, '');
-        document.getElementById('editPrecio').value = priceValue;
         
         document.getElementById('editStock').value = product.stock;
         document.getElementById('editStockMinimo').value = product.stock_minimo;

@@ -474,4 +474,23 @@ class MovementModel extends Database {
             'last_movement_stock' => $lastMovement->stock_actual
         ];
     }
+
+    /**
+     * Tendencia de movimientos por mes (últimos N meses)
+     * @param int $meses - Número de meses hacia atrás
+     * @return array - Fila por mes con total_entradas y total_salidas
+     */
+    public function getTrendByMonth($meses = 6) {
+        $this->query("SELECT 
+                        DATE_FORMAT(fecha_movimiento, '%Y-%m') AS mes,
+                        DATE_FORMAT(fecha_movimiento, '%b %Y') AS mes_label,
+                        SUM(CASE WHEN tipo_movimiento IN ('ENTRADA', 'DEVOLUCION') THEN cantidad ELSE 0 END) AS total_entradas,
+                        SUM(CASE WHEN tipo_movimiento IN ('SALIDA_SOLICITUD', 'SALIDA_MANUAL') THEN cantidad ELSE 0 END) AS total_salidas
+                      FROM Movimientos_Inventario
+                      WHERE fecha_movimiento >= DATE_SUB(NOW(), INTERVAL :meses MONTH)
+                      GROUP BY DATE_FORMAT(fecha_movimiento, '%Y-%m'), DATE_FORMAT(fecha_movimiento, '%b %Y')
+                      ORDER BY mes ASC");
+        $this->bind(':meses', $meses, PDO::PARAM_INT);
+        return $this->resultSet();
+    }
 }

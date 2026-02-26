@@ -268,4 +268,150 @@ class Entries extends Controller
         }
         exit();
     }
+    /**
+     * API: Confirmar llegada completa de la entrega
+     */
+    public function confirmar($id) {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['usuario'])) { http_response_code(401); echo json_encode(['success' => false, 'message' => 'No autorizado']); exit(); }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $data = [
+            'fecha_entrega_real' => $body['fecha_entrega_real'] ?? date('Y-m-d'),
+            'notas_entrega' => $body['notas'] ?? null,
+        ];
+
+        // Ensure user owns this entry
+        $entry = $this->entriesModel->getById($id);
+        if (!$entry || ($entry->usuario_id != $_SESSION['usuario_id'] && $_SESSION['tipo_usuario'] !== 'Administrador')) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Sin permisos para esta entrada.']);
+            exit();
+        }
+
+        if ($entry->estado !== 'Pendiente') {
+            echo json_encode(['success' => false, 'message' => 'Esta entrada ya fue procesada.']);
+            exit();
+        }
+
+        $result = $this->entriesModel->updateEntryStatus($id, 'Confirmada', $data);
+        echo json_encode($result
+            ? ['success' => true, 'message' => '¡Entrega confirmada correctamente!']
+            : ['success' => false, 'message' => 'Error al confirmar la entrega.']
+        );
+        exit();
+    }
+
+    /**
+     * API: Reportar retraso en la entrega
+     */
+    public function reportarRetraso($id) {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['usuario'])) { http_response_code(401); echo json_encode(['success' => false, 'message' => 'No autorizado']); exit(); }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        $entry = $this->entriesModel->getById($id);
+        if (!$entry || ($entry->usuario_id != $_SESSION['usuario_id'] && $_SESSION['tipo_usuario'] !== 'Administrador')) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Sin permisos para esta entrada.']);
+            exit();
+        }
+
+        if ($entry->estado !== 'Pendiente') {
+            echo json_encode(['success' => false, 'message' => 'Esta entrada ya fue procesada.']);
+            exit();
+        }
+
+        $data = [
+            'notas_entrega' => $body['notas'] ?? 'Entrega retrasada.',
+            'nueva_fecha_estimada' => $body['nueva_fecha'] ?? null,
+        ];
+
+        $result = $this->entriesModel->updateEntryStatus($id, 'Retrasada', $data);
+        echo json_encode($result
+            ? ['success' => true, 'message' => 'Retraso reportado. Se ha actualizado la fecha estimada.']
+            : ['success' => false, 'message' => 'Error al reportar el retraso.']
+        );
+        exit();
+    }
+
+    /**
+     * API: Reportar que la entrega no llegó
+     */
+    public function reportarNoRecibido($id) {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['usuario'])) { http_response_code(401); echo json_encode(['success' => false, 'message' => 'No autorizado']); exit(); }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        $entry = $this->entriesModel->getById($id);
+        if (!$entry || ($entry->usuario_id != $_SESSION['usuario_id'] && $_SESSION['tipo_usuario'] !== 'Administrador')) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Sin permisos para esta entrada.']);
+            exit();
+        }
+
+        if ($entry->estado !== 'Pendiente') {
+            echo json_encode(['success' => false, 'message' => 'Esta entrada ya fue procesada.']);
+            exit();
+        }
+
+        // Stock will be returned inside updateEntryStatus for No_Recibida
+        $data = ['notas_entrega' => $body['notas'] ?? 'Producto no recibido.'];
+        $result = $this->entriesModel->updateEntryStatus($id, 'No_Recibida', $data);
+        echo json_encode($result
+            ? ['success' => true, 'message' => 'Se ha registrado como no recibido y el stock fue restaurado.']
+            : ['success' => false, 'message' => 'Error al registrar el no recibido.']
+        );
+        exit();
+    }
+
+    /**
+     * API: Reportar llegada parcial
+     */
+    public function reportarParcial($id) {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['usuario'])) { http_response_code(401); echo json_encode(['success' => false, 'message' => 'No autorizado']); exit(); }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $cantidadRecibida = isset($body['cantidad_recibida']) ? (int)$body['cantidad_recibida'] : null;
+
+        if ($cantidadRecibida === null || $cantidadRecibida < 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Debe especificar la cantidad recibida.']);
+            exit();
+        }
+
+        $entry = $this->entriesModel->getById($id);
+        if (!$entry || ($entry->usuario_id != $_SESSION['usuario_id'] && $_SESSION['tipo_usuario'] !== 'Administrador')) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Sin permisos para esta entrada.']);
+            exit();
+        }
+
+        if ($entry->estado !== 'Pendiente') {
+            echo json_encode(['success' => false, 'message' => 'Esta entrada ya fue procesada.']);
+            exit();
+        }
+
+        if ($cantidadRecibida >= $entry->cantidad) {
+            // If they say they got all, treat as confirmed
+            $data = ['fecha_entrega_real' => date('Y-m-d'), 'notas_entrega' => $body['notas'] ?? null];
+            $result = $this->entriesModel->updateEntryStatus($id, 'Confirmada', $data);
+        } else {
+            $data = [
+                'cantidad_recibida' => $cantidadRecibida,
+                'fecha_entrega_real' => date('Y-m-d'),
+                'notas_entrega' => $body['notas'] ?? 'Llegada parcial.',
+            ];
+            $result = $this->entriesModel->updateEntryStatus($id, 'Parcial', $data);
+        }
+
+        echo json_encode($result
+            ? ['success' => true, 'message' => 'Llegada parcial registrada. El stock pendiente fue restaurado.']
+            : ['success' => false, 'message' => 'Error al registrar la llegada parcial.']
+        );
+        exit();
+    }
 }

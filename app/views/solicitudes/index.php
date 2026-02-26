@@ -1,25 +1,11 @@
 <?php require_once BASE_PATH . '/app/views/layouts/header.php'; ?>
 
-<!-- Success/Error Messages -->
-<?php if (isset($_SESSION['success_message'])): ?>
-<div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-3">
-    <i class="fa-solid fa-check-circle text-green-600"></i>
-    <span><?php echo $_SESSION['success_message']; unset($_SESSION['success_message']); ?></span>
-</div>
-<?php endif; ?>
-
-<?php if (isset($_SESSION['error_message'])): ?>
-<div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-3">
-    <i class="fa-solid fa-exclamation-circle text-red-600"></i>
-    <span><?php echo $_SESSION['error_message']; unset($_SESSION['error_message']); ?></span>
-</div>
-<?php endif; ?>
-
+<!-- Page Header -->
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-xl font-bold text-gray-800">Solicitudes</h2>
-            <p class="text-gray-500 text-sm">Gestiona tus solicitudes.</p>
+            <h2 class="text-xl font-bold text-gray-900">Solicitudes</h2>
+            <p class="text-gray-500 text-sm mt-0.5">Gestiona las solicitudes de productos del sistema.</p>
         </div>
     </div>
 </div>
@@ -28,21 +14,21 @@
     <!-- Search handled by DataTables -->
 
     <!-- Requests Table -->
-    <div class="overflow-x-auto rounded-lg border border-gray-200">
-        <table id="solicitudesTable" class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+    <div class="overflow-x-auto">
+        <table id="solicitudesTable" class="w-full text-sm">
+            <thead class="text-xs text-gray-500 uppercase bg-gray-50">
                 <tr>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">ID Solicitud</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Origen</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Destino</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Fecha</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Items</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Prioridad</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Estado</th>
-                    <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Acciones</th>
+                    <th class="px-4 py-3 text-left font-semibold">ID Solicitud</th>
+                    <th class="px-4 py-3 text-left font-semibold">Origen</th>
+                    <th class="px-4 py-3 text-left font-semibold">Destino</th>
+                    <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+                    <th class="px-4 py-3 text-left font-semibold">Items</th>
+                    <th class="px-4 py-3 text-left font-semibold">Prioridad</th>
+                    <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                    <th class="px-4 py-3 text-left font-semibold">Acciones</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
+            <tbody class="divide-y divide-gray-100">
                 <?php foreach ($solicitudes as $req): ?>
                     <?php
                     $priorityClass = match ($req['prioridad_class']) {
@@ -74,26 +60,26 @@
                     };
                     ?>
                     <tr id="request-row-<?php echo $req['id']; ?>" class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3">
                             <span class="font-mono text-blue-600 bg-blue-50 px-2.5 py-1 rounded text-xs font-medium border border-blue-100"><?php echo $req['id']; ?></span>
                         </td>
-                        <td class="px-6 py-4 text-gray-900"><?php echo $req['origen']; ?></td>
-                        <td class="px-6 py-4"><?php echo $req['destino']; ?></td>
-                        <td class="px-6 py-4"><?php echo $req['fecha']; ?></td>
-                        <td class="px-6 py-4"><?php echo $req['items_summary']; ?></td>
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3 font-semibold text-gray-900"><?php echo $req['origen']; ?></td>
+                        <td class="px-4 py-3 text-gray-600"><?php echo $req['destino']; ?></td>
+                        <td class="px-4 py-3 text-gray-600"><?php echo $req['fecha']; ?></td>
+                        <td class="px-4 py-3 text-gray-600"><?php echo $req['items_summary']; ?></td>
+                        <td class="px-4 py-3">
                             <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold border <?php echo $priorityClass; ?>">
                                 <?php echo $req['prioridad']; ?>
                             </span>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-4 py-3">
                             <span class="request-status px-2.5 py-0.5 rounded-full text-xs font-medium border flex items-center gap-1.5 w-fit <?php echo $statusClass; ?>">
-                                <span class="request-status-dot w-1.5 h-1.5 rounded-full <?php echo $statusDot; ?>"></span> 
+                                <span class="request-status-dot w-1.5 h-1.5 rounded-full <?php echo $statusDot; ?>"></span>
                                 <span class="request-status-text"><?php echo $req['estado']; ?></span>
                             </span>
                         </td>
-                        <td class="px-6 py-4">
-                            <button onclick="openModal('<?php echo $req['id']; ?>')" class="request-action-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all <?php echo $btnClass; ?>"><?php echo $req['accion']; ?></button>
+                        <td class="px-4 py-3">
+                            <button onclick="openModal('<?php echo $req['id']; ?>')" class="request-action-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all <?php echo $btnClass; ?>"><?php echo $req['accion']; ?></button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -101,6 +87,7 @@
         </table>
     </div>
 </div>
+
 
 <!-- Modal -->
 <div id="actionModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -198,13 +185,39 @@
                         </div>
                     </div>
                     <div id="counterOfferItems" class="space-y-3"></div>
-                    <div class="mt-4">
-                        <label for="counterOfferNotes" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Notas de la Contra-Oferta <span class="text-gray-400 font-normal">(Opcional)</span>
-                        </label>
-                        <textarea id="counterOfferNotes" rows="3"
-                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-shadow resize-none"
-                                placeholder="Explica los motivos de la modificación..."></textarea>
+                    <div class="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="counterOfferNotes" class="block text-sm font-semibold text-gray-700 mb-2">
+                                Notas <span class="text-gray-400 font-normal">(Opcional)</span>
+                            </label>
+                            <textarea id="counterOfferNotes" rows="3"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-shadow resize-none"
+                                    placeholder="Explica los motivos de la modificación..."></textarea>
+                        </div>
+                        <div>
+                            <label for="counterOfferDate" class="block text-sm font-semibold text-gray-700 mb-2">
+                                Fecha estimada de entrega <span class="text-red-500">*</span>
+                            </label>
+                            <div class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mb-2">
+                                <i class="fa-solid fa-truck-fast text-blue-500 text-sm"></i>
+                                <p class="text-xs text-blue-700">¿Cuándo llegará el pedido al solicitante si aceptan la nueva cantidad?</p>
+                            </div>
+                            <input type="date" id="counterOfferDate"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-shadow text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inline Approval Date Section (hidden by default) -->
+                <div id="approvalDateSection" class="hidden mb-4">
+                    <div class="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                        <i class="fa-solid fa-truck-fast text-blue-500 mt-0.5 text-lg"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-blue-800 mb-1">Fecha estimada de entrega</p>
+                            <p class="text-xs text-blue-600 mb-3">Indica cuándo llegará el pedido al solicitante. Este dato quedará registrado en su entrada de inventario.</p>
+                            <input type="date" id="approvalDateInput"
+                                class="w-full border border-blue-300 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
                     </div>
                 </div>
 
@@ -305,6 +318,8 @@
 
         // Hide counter offer form and comparison initially
         document.getElementById('counterOfferForm').classList.add('hidden');
+        document.getElementById('approvalDateSection').classList.add('hidden');
+        document.getElementById('actionMessage').classList.add('hidden');
         document.getElementById('counterOfferComparison').classList.add('hidden');
         document.getElementById('counterAcceptedBanner').classList.add('hidden');
         
@@ -467,7 +482,7 @@
                         class="flex-1 sm:flex-none justify-center px-4 py-2 bg-amber-50 text-amber-700 text-sm font-medium rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors">
                     <i class="fa-solid fa-pen mr-2"></i>Modificar
                 </button>
-                <button onclick="performAction('approve', '${req.id}')" type="button" 
+                <button onclick="showApprovalDate('${req.id}')" type="button" 
                         class="flex-1 sm:flex-none justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
                     <i class="fa-solid fa-check mr-2"></i>Aprobar Solicitud
                 </button>`;
@@ -578,6 +593,7 @@
     function cancelCounterOffer(requestId) {
         // Hide counter offer form and restore original buttons
         document.getElementById('counterOfferForm').classList.add('hidden');
+        document.getElementById('approvalDateSection').classList.add('hidden');
         
         // Re-open modal to restore buttons
         const req = requestsData.find(r => r.id === requestId);
@@ -593,7 +609,7 @@
                     class="flex-1 sm:flex-none justify-center px-4 py-2 bg-amber-50 text-amber-700 text-sm font-medium rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors">
                 <i class="fa-solid fa-pen mr-2"></i>Modificar
             </button>
-            <button onclick="performAction('approve', '${req.id}')" type="button" 
+            <button onclick="showApprovalDate('${req.id}')" type="button" 
                     class="flex-1 sm:flex-none justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
                 <i class="fa-solid fa-check mr-2"></i>Aprobar Solicitud
             </button>
@@ -649,10 +665,18 @@
         });
 
         
-        // Get notes
+        // Get notes and delivery date
         const notes = document.getElementById('counterOfferNotes').value;
+        const fechaEntrega = document.getElementById('counterOfferDate').value;
         formData.append('counter_offer_notes', notes);
+        formData.append('fecha_entrega', fechaEntrega);
 
+        if (!fechaEntrega) {
+            msgDiv.classList.remove('hidden');
+            msgDiv.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
+            msgDiv.innerHTML = '<div class="flex gap-2"><i class="fa-solid fa-triangle-exclamation"></i><span>Debes especificar la fecha estimada de entrega.</span></div>';
+            return;
+        }
 
         if (!hasChanges && !notes) {
             msgDiv.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
@@ -780,7 +804,48 @@
         msgDiv.innerHTML = `<div class="flex gap-2"><i class="fa-solid fa-circle-xmark"></i><span>${message || 'Error desconocido.'}</span></div>`;
     }
 
-    function performAction(action, requestId) {
+    // ---- Inline approval date (no second modal) ----
+    let pendingApprovalId = null;
+
+    function showApprovalDate(requestId) {
+        pendingApprovalId = requestId;
+        const today = new Date().toISOString().split('T')[0];
+        const input = document.getElementById('approvalDateInput');
+        input.min = today;
+        input.value = '';
+        document.getElementById('approvalDateSection').classList.remove('hidden');
+
+        const actionsDiv = document.getElementById('modalActions');
+        actionsDiv.innerHTML = `
+            <button type="button" onclick="cancelApprovalDate('${requestId}')" 
+                    class="flex-1 sm:flex-none justify-center px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+                Volver
+            </button>
+            <button type="button" onclick="doApprove('${requestId}')" 
+                    class="flex-1 sm:flex-none justify-center px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
+                <i class="fa-solid fa-check mr-2"></i>Confirmar Aprobación
+            </button>`;
+    }
+
+    function cancelApprovalDate(requestId) {
+        document.getElementById('approvalDateSection').classList.add('hidden');
+        cancelCounterOffer(requestId); // reuses the same button-restore logic
+    }
+
+    function doApprove(requestId) {
+        const fecha = document.getElementById('approvalDateInput').value;
+        if (!fecha) {
+            const input = document.getElementById('approvalDateInput');
+            input.classList.add('border-red-400', 'ring-2', 'ring-red-300');
+            input.focus();
+            setTimeout(() => input.classList.remove('border-red-400', 'ring-2', 'ring-red-300'), 2000);
+            return;
+        }
+        document.getElementById('approvalDateSection').classList.add('hidden');
+        performAction('approve', requestId, fecha);
+    }
+
+    function performAction(action, requestId, fechaEntrega = null) {
         const msgDiv = document.getElementById('actionMessage');
         const actionsDiv = document.getElementById('modalActions');
         
@@ -801,9 +866,13 @@
         else if (action === 'accept_counter') endpoint = `aceptar_contraoferta/${requestId}`;
         else if (action === 'reject_counter') endpoint = `rechazar_contraoferta/${requestId}`;
 
-        fetch(`${baseUrl}/requests.php/${endpoint}`, { 
-            method: 'POST'
-        })
+        const fetchOptions = { method: 'POST', headers: {} };
+        if (action === 'approve' && fechaEntrega) {
+            fetchOptions.headers['Content-Type'] = 'application/json';
+            fetchOptions.body = JSON.stringify({ fecha_entrega: fechaEntrega });
+        }
+
+        fetch(`${baseUrl}/requests.php/${endpoint}`, fetchOptions)
         .then(response => response.json())
         .then(data => {
             if (data.success) {

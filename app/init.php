@@ -23,6 +23,9 @@ require_once BASE_PATH . '/app/controllers/Requests.php';
 require_once BASE_PATH . '/app/controllers/Entries.php';
 require_once BASE_PATH . '/app/controllers/Movements.php';
 require_once BASE_PATH . '/app/controllers/Exits.php';
+require_once BASE_PATH . '/app/controllers/Agentes.php';
+require_once BASE_PATH . '/app/controllers/Sucursales.php';
+require_once BASE_PATH . '/app/controllers/Reportes.php';
 
 // Cargar modelos
 require_once BASE_PATH . '/app/models/UserModel.php';

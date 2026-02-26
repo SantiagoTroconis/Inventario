@@ -388,12 +388,22 @@ class Requests extends Controller
         $currentUserRole = $_SESSION['tipo_usuario'];
 
         if ($currentUserRole === 'Administrador' || $currentUserRole === 'Sucursal') {
-            $result = $this->requestModel->updateEstado($id, 'Aprobada', $_SESSION['usuario_id']);
-            
+            // Read delivery date from POST body
+            $body = json_decode(file_get_contents('php://input'), true);
+            $fechaEntrega = $body['fecha_entrega'] ?? ($_POST['fecha_entrega'] ?? null);
 
+            // Validate delivery date
+            if (empty($fechaEntrega)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Debe especificar la fecha estimada de entrega.']);
+                exit();
+            }
+
+            $result = $this->requestModel->updateEstado($id, 'Aprobada', $_SESSION['usuario_id'], $fechaEntrega);
+            
             if ($result) {
-                $_SESSION['success_message'] = 'Solicitud aprobada exitosamente. El stock ha sido actualizado.';
-                echo json_encode(['success' => true, 'message' => 'Solicitud aprobada exitosamente. El stock ha sido actualizado.']);
+                $_SESSION['success_message'] = 'Solicitud aprobada. Se ha creado una entrada pendiente para el solicitante.';
+                echo json_encode(['success' => true, 'message' => 'Solicitud aprobada. El solicitante verá la entrega pendiente en sus entradas.']);
             } else {
                 http_response_code(500);
                 echo json_encode(['success' => false, 'message' => 'Error al aprobar la solicitud. Verifica que haya stock suficiente.']);
@@ -494,15 +504,23 @@ class Requests extends Controller
                 exit();
             }
 
-            // Obtener notas de modificación
+            // Obtener notas y fecha de entrega
             $counter_offer_notes = $_POST['counter_offer_notes'] ?? 'Modificación de cantidades solicitadas';
+            $fecha_entrega = $_POST['fecha_entrega'] ?? null;
+
+            if (empty($fecha_entrega)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Debe especificar la fecha estimada de entrega.']);
+                exit();
+            }
 
             // Crear NEGOCIACIÓN (Refactor)
             $negotiationId = $this->requestModel->createNegotiation(
                 $id,
                 $_SESSION['usuario_id'],
                 $modified_details,
-                $counter_offer_notes
+                $counter_offer_notes,
+                $fecha_entrega
             );
 
             if ($negotiationId) {

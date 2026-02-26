@@ -290,7 +290,7 @@ if (!function_exists('time_elapsed_string')) {
                     <div class="w-16 h-16 bg-white/20 rounded-2xl backdrop-blur flex items-center justify-center mx-auto mb-4 shadow-inner group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-hand-holding-box text-3xl"></i>
                     </div>
-                    <h2 class="text-2xl font-bold mb-2">Solicitar INventario</h2>
+                    <h2 class="text-2xl font-bold mb-2">Solicitar Inventario</h2>
                     <p class="text-white/80 mb-6 text-sm">Crea una solicitud ahora.</p>
                     <a href="<?php echo URL_BASE; ?>/products.php/sucursal/4" class="block w-full py-3 px-6 bg-white text-purple-600 font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-transform transform active:scale-95">
                         <i class="fa-solid fa-plus-circle mr-2"></i> Nueva Solicitud

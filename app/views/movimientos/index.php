@@ -1,233 +1,203 @@
 <?php require_once BASE_PATH . '/app/views/layouts/header.php'; ?>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+<!-- Page Header -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-xl font-bold text-gray-800">Movimientos de Inventario</h2>
-            <p class="text-gray-500 text-sm">Registro completo de todos los movimientos de stock.</p>
+            <h2 class="text-xl font-bold text-gray-900">Movimientos de Inventario</h2>
+            <p class="text-gray-500 text-sm mt-0.5">Registro completo de todos los movimientos de stock.</p>
         </div>
-        <div class="flex gap-3">
-            <button onclick="toggleFilters()" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors">
-                <i class="fa-solid fa-filter"></i> Filtros
+        <button onclick="toggleFilters()" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition-colors">
+            <i class="fa-solid fa-filter"></i> Filtros
+        </button>
+    </div>
+</div>
+
+<!-- Filters Panel -->
+<div id="filtersPanel" class="hidden mb-6 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <form method="GET" action="<?php echo URL_BASE; ?>/movements" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Producto</label>
+            <input type="text" name="producto_nombre" value="<?php echo $filtros['producto_nombre'] ?? ''; ?>" placeholder="Buscar por nombre"
+                class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Tipo de Movimiento</label>
+            <select name="tipo_movimiento" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+                <option value="">Todos</option>
+                <option value="ENTRADA" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'ENTRADA' ? 'selected' : ''; ?>>Entrada</option>
+                <option value="SALIDA_SOLICITUD" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'SALIDA_SOLICITUD' ? 'selected' : ''; ?>>Salida (Solicitud)</option>
+                <option value="SALIDA_MANUAL" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'SALIDA_MANUAL' ? 'selected' : ''; ?>>Salida Manual</option>
+                <option value="AJUSTE_INVENTARIO" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'AJUSTE_INVENTARIO' ? 'selected' : ''; ?>>Ajuste</option>
+                <option value="DEVOLUCION" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'DEVOLUCION' ? 'selected' : ''; ?>>Devolución</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Fecha Inicio</label>
+            <input type="date" name="fecha_inicio" value="<?php echo $filtros['fecha_inicio'] ?? ''; ?>"
+                class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Fecha Fin</label>
+            <input type="date" name="fecha_fin" value="<?php echo $filtros['fecha_fin'] ?? ''; ?>"
+                class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div class="flex items-end gap-2">
+            <button type="submit" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                <i class="fa-solid fa-search mr-1.5"></i> Buscar
             </button>
+            <a href="<?php echo URL_BASE; ?>/movements" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition-colors">
+                <i class="fa-solid fa-times mr-1.5"></i> Limpiar
+            </a>
         </div>
-    </div>
+    </form>
+</div>
 
-    <!-- Filters Panel -->
-    <div id="filtersPanel" class="hidden mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <form method="GET" action="<?php echo URL_BASE; ?>/movements" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
-                <input type="text" name="producto_nombre" 
-                       value="<?php echo $filtros['producto_nombre'] ?? ''; ?>"
-                       placeholder="Buscar por nombre"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Movimiento</label>
-                <select name="tipo_movimiento" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="">Todos</option>
-                    <option value="ENTRADA" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'ENTRADA' ? 'selected' : ''; ?>>Entrada</option>
-                    <option value="SALIDA_SOLICITUD" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'SALIDA_SOLICITUD' ? 'selected' : ''; ?>>Salida (Solicitud)</option>
-                    <option value="SALIDA_MANUAL" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'SALIDA_MANUAL' ? 'selected' : ''; ?>>Salida Manual</option>
-                    <option value="AJUSTE_INVENTARIO" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'AJUSTE_INVENTARIO' ? 'selected' : ''; ?>>Ajuste</option>
-                    <option value="DEVOLUCION" <?php echo ($filtros['tipo_movimiento'] ?? '') === 'DEVOLUCION' ? 'selected' : ''; ?>>Devolución</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
-                <input type="date" name="fecha_inicio" 
-                       value="<?php echo $filtros['fecha_inicio'] ?? ''; ?>"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
-                <input type="date" name="fecha_fin" 
-                       value="<?php echo $filtros['fecha_fin'] ?? ''; ?>"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-            </div>
-
-            <div class="flex items-end gap-2">
-                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-                    <i class="fa-solid fa-search"></i> Buscar
-                </button>
-                <a href="<?php echo URL_BASE; ?>/movements" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors">
-                    <i class="fa-solid fa-times"></i> Limpiar
-                </a>
-            </div>
-        </form>
-    </div>
-
-    <div class="overflow-x-auto rounded-lg border border-gray-200">
-        <table id="movimientosTable" class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+<!-- Table -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="overflow-x-auto">
+        <table id="movimientosTable" class="w-full text-sm">
+            <thead class="text-xs text-gray-500 uppercase bg-gray-50">
                 <tr>
-                    <th class="px-6 py-4 font-semibold">ID</th>
-                    <th class="px-6 py-4 font-semibold">Fecha</th>
-                    <th class="px-6 py-4 font-semibold">Tipo</th>
-                    <th class="px-6 py-4 font-semibold">Producto</th>
-                    <th class="px-6 py-4 font-semibold">Cantidad</th>
-                    <th class="px-6 py-4 font-semibold">Stock Anterior</th>
-                    <th class="px-6 py-4 font-semibold">Stock Actual</th>
-                    <th class="px-6 py-4 font-semibold">Usuario</th>
-                    <th class="px-6 py-4 font-semibold">Acciones</th>
+                    <th class="px-4 py-3 text-left font-semibold">ID</th>
+                    <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+                    <th class="px-4 py-3 text-left font-semibold">Tipo</th>
+                    <th class="px-4 py-3 text-left font-semibold">Producto</th>
+                    <th class="px-4 py-3 text-left font-semibold">Cantidad</th>
+                    <th class="px-4 py-3 text-left font-semibold">Stock Anterior</th>
+                    <th class="px-4 py-3 text-left font-semibold">Stock Actual</th>
+                    <th class="px-4 py-3 text-left font-semibold">Usuario</th>
+                    <th class="px-4 py-3 text-left font-semibold">Acciones</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
+            <tbody class="divide-y divide-gray-100">
                 <?php if (!empty($movimientos)): ?>
                     <?php foreach ($movimientos as $m): ?>
                         <?php
-                        // Determine colors based on movement type
                         $typeColors = [
-                            'ENTRADA' => 'bg-green-50 text-green-700 border-green-200',
-                            'DEVOLUCION' => 'bg-blue-50 text-blue-700 border-blue-200',
-                            'SALIDA_SOLICITUD' => 'bg-red-50 text-red-700 border-red-200',
-                            'SALIDA_MANUAL' => 'bg-orange-50 text-orange-700 border-orange-200',
-                            'AJUSTE_INVENTARIO' => 'bg-purple-50 text-purple-700 border-purple-200'
+                            'ENTRADA'            => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                            'DEVOLUCION'         => 'bg-blue-50 text-blue-700 border-blue-200',
+                            'SALIDA_SOLICITUD'   => 'bg-red-50 text-red-700 border-red-200',
+                            'SALIDA_MANUAL'      => 'bg-orange-50 text-orange-700 border-orange-200',
+                            'AJUSTE_INVENTARIO'  => 'bg-purple-50 text-purple-700 border-purple-200',
                         ];
                         $colorClass = $typeColors[$m->tipo_movimiento] ?? 'bg-gray-50 text-gray-700 border-gray-200';
-                        
                         $typeIcons = [
-                            'ENTRADA' => 'fa-arrow-down',
-                            'DEVOLUCION' => 'fa-rotate-left',
-                            'SALIDA_SOLICITUD' => 'fa-arrow-up',
-                            'SALIDA_MANUAL' => 'fa-arrow-up',
-                            'AJUSTE_INVENTARIO' => 'fa-wrench'
+                            'ENTRADA'           => 'fa-arrow-down',
+                            'DEVOLUCION'        => 'fa-rotate-left',
+                            'SALIDA_SOLICITUD'  => 'fa-arrow-up',
+                            'SALIDA_MANUAL'     => 'fa-arrow-up',
+                            'AJUSTE_INVENTARIO' => 'fa-wrench',
                         ];
                         $iconClass = $typeIcons[$m->tipo_movimiento] ?? 'fa-exchange';
+                        $diff = $m->stock_actual - $m->stock_anterior;
                         ?>
                         <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4">
-                                <span class="font-mono text-gray-600 text-xs">
+                            <td class="px-4 py-3">
+                                <span class="font-mono text-blue-600 bg-blue-50 px-2.5 py-1 rounded text-xs font-medium border border-blue-100">
                                     #<?php echo str_pad($m->id, 5, '0', STR_PAD_LEFT); ?>
                                 </span>
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="text-sm text-gray-700"><?php echo date('d/m/Y', strtotime($m->fecha_movimiento)); ?></span>
-                                <span class="block text-xs text-gray-500"><?php echo date('H:i', strtotime($m->fecha_movimiento)); ?></span>
+                            <td class="px-4 py-3">
+                                <span class="text-sm font-medium text-gray-900"><?php echo date('d/m/Y', strtotime($m->fecha_movimiento)); ?></span>
+                                <span class="block text-xs text-gray-400"><?php echo date('H:i', strtotime($m->fecha_movimiento)); ?></span>
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border <?php echo $colorClass; ?>">
-                                    <i class="fa-solid <?php echo $iconClass; ?> mr-1"></i>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border <?php echo $colorClass; ?>">
+                                    <i class="fa-solid <?php echo $iconClass; ?>"></i>
                                     <?php echo str_replace('_', ' ', $m->tipo_movimiento); ?>
                                 </span>
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="font-medium text-gray-900"><?php echo htmlspecialchars($m->producto_nombre); ?></span>
-                                <span class="block text-xs text-gray-500 font-mono"><?php echo htmlspecialchars($m->producto_codigo); ?></span>
+                            <td class="px-4 py-3">
+                                <p class="font-semibold text-gray-900"><?php echo htmlspecialchars($m->producto_nombre); ?></p>
+                                <p class="text-xs text-gray-400 font-mono"><?php echo htmlspecialchars($m->producto_codigo); ?></p>
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="font-bold text-gray-900"><?php echo number_format($m->cantidad); ?></span>
+                            <td class="px-4 py-3 font-bold text-gray-900"><?php echo number_format($m->cantidad); ?></td>
+                            <td class="px-4 py-3 text-gray-600"><?php echo number_format($m->stock_anterior); ?></td>
+                            <td class="px-4 py-3">
+                                <span class="font-semibold text-gray-900"><?php echo number_format($m->stock_actual); ?></span>
+                                <?php if ($diff > 0): ?>
+                                    <span class="ml-1 text-emerald-600 text-xs"><i class="fa-solid fa-arrow-up"></i> +<?php echo number_format($diff); ?></span>
+                                <?php elseif ($diff < 0): ?>
+                                    <span class="ml-1 text-red-500 text-xs"><i class="fa-solid fa-arrow-down"></i> <?php echo number_format($diff); ?></span>
+                                <?php endif; ?>
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="text-gray-600"><?php echo number_format($m->stock_anterior); ?></span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="text-gray-900 font-medium"><?php echo number_format($m->stock_actual); ?></span>
-                                <?php
-                                $diff = $m->stock_actual - $m->stock_anterior;
-                                if ($diff > 0) {
-                                    echo '<span class="ml-1 text-green-600 text-xs"><i class="fa-solid fa-arrow-up"></i> +' . number_format($diff) . '</span>';
-                                } elseif ($diff < 0) {
-                                    echo '<span class="ml-1 text-red-600 text-xs"><i class="fa-solid fa-arrow-down"></i> ' . number_format($diff) . '</span>';
-                                }
-                                ?>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="text-sm text-gray-700"><?php echo htmlspecialchars($m->usuario_nombre); ?></span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <button onclick='viewMovement(<?php echo json_encode($m); ?>)' 
-                                   class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-100" 
-                                   title="Ver detalles">
-                                    <i class="fa-solid fa-eye"></i>
+                            <td class="px-4 py-3 text-gray-700 text-sm"><?php echo htmlspecialchars($m->usuario_nombre); ?></td>
+                            <td class="px-4 py-3">
+                                <button onclick='viewMovement(<?php echo json_encode($m); ?>)'
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                    title="Ver detalles">
+                                    <i class="fa-solid fa-eye text-xs"></i>
                                 </button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr>
-                        <td colspan="9" class="px-6 py-8 text-center text-gray-500">
-                            <i class="fa-solid fa-inbox text-4xl mb-2 text-gray-300"></i>
-                            <p class="text-sm">No hay movimientos registrados</p>
-                        </td>
-                    </tr>
+                    <tr><td colspan="9" class="px-4 py-12 text-center text-gray-400">
+                        <i class="fa-solid fa-right-left text-3xl mb-3 block opacity-30"></i>
+                        No hay movimientos registrados.
+                    </td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- Modal para Ver Detalles de Movimiento -->
-<div id="movementModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-lg bg-white">
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between pb-4 border-b border-gray-200">
-            <h3 class="text-xl font-bold text-gray-800">Detalle de Movimiento</h3>
-            <button onclick="closeMovementModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <i class="fa-solid fa-times text-xl"></i>
+<!-- Detail Modal -->
+<div id="movementModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
+                    <i class="fa-solid fa-right-left text-blue-600"></i>
+                </div>
+                <h3 class="font-bold text-gray-900">Detalle de Movimiento</h3>
+            </div>
+            <button onclick="closeMovementModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
             </button>
         </div>
-        
-        <!-- Modal Body -->
-        <div class="mt-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">ID Movimiento</label>
-                    <p id="modal-mov-id" class="text-lg font-mono font-bold text-blue-600"></p>
-                </div>
-
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Fecha</label>
-                    <p id="modal-mov-fecha" class="text-lg font-semibold text-gray-800"></p>
-                </div>
-
-                <div class="col-span-1 md:col-span-2 rounded-lg p-4 border" id="modal-mov-tipo-container">
-                    <label class="block text-xs font-semibold uppercase mb-1">Tipo de Movimiento</label>
-                    <p id="modal-mov-tipo" class="text-xl font-bold"></p>
-                </div>
-
-                <div class="col-span-1 md:col-span-2 bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <label class="block text-xs font-semibold text-blue-700 uppercase mb-1">Producto</label>
-                    <p id="modal-mov-producto" class="text-lg font-bold text-gray-900"></p>
-                    <p id="modal-mov-codigo" class="text-sm text-gray-600 mt-1"></p>
-                </div>
-
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Cantidad</label>
-                    <p id="modal-mov-cantidad" class="text-2xl font-bold text-gray-900"></p>
-                </div>
-
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Usuario</label>
-                    <p id="modal-mov-usuario" class="text-lg font-semibold text-gray-800"></p>
-                </div>
-
-                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <label class="block text-xs font-semibold text-green-700 uppercase mb-1">Stock Anterior</label>
-                    <p id="modal-mov-stock-ant" class="text-2xl font-bold text-green-700"></p>
-                </div>
-
-                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <label class="block text-xs font-semibold text-blue-700 uppercase mb-1">Stock Actual</label>
-                    <p id="modal-mov-stock-act" class="text-2xl font-bold text-blue-700"></p>
-                </div>
-
-                <div class="col-span-1 md:col-span-2 bg-gray-50 rounded-lg p-4 border border-gray-200" id="modal-mov-comentario-container">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Comentario</label>
-                    <p id="modal-mov-comentario" class="text-sm text-gray-700"></p>
-                </div>
+        <div class="px-6 py-5 grid grid-cols-2 gap-4">
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p class="text-xs font-semibold text-gray-400 uppercase mb-1">ID</p>
+                <p id="modal-mov-id" class="text-base font-mono font-bold text-blue-600"></p>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Fecha</p>
+                <p id="modal-mov-fecha" class="text-base font-semibold text-gray-900"></p>
+            </div>
+            <div class="col-span-2 rounded-xl p-4 border" id="modal-mov-tipo-container">
+                <p class="text-xs font-semibold uppercase mb-1 opacity-70">Tipo de Movimiento</p>
+                <p id="modal-mov-tipo" class="text-lg font-bold"></p>
+            </div>
+            <div class="col-span-2 bg-blue-50 rounded-xl p-4 border border-blue-100">
+                <p class="text-xs font-semibold text-blue-600 uppercase mb-1">Producto</p>
+                <p id="modal-mov-producto" class="font-bold text-gray-900"></p>
+                <p id="modal-mov-codigo" class="text-xs text-gray-500 mt-0.5 font-mono"></p>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Cantidad</p>
+                <p id="modal-mov-cantidad" class="text-2xl font-bold text-gray-900"></p>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Usuario</p>
+                <p id="modal-mov-usuario" class="font-semibold text-gray-900"></p>
+            </div>
+            <div class="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                <p class="text-xs font-semibold text-emerald-600 uppercase mb-1">Stock Anterior</p>
+                <p id="modal-mov-stock-ant" class="text-2xl font-bold text-emerald-700"></p>
+            </div>
+            <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                <p class="text-xs font-semibold text-blue-600 uppercase mb-1">Stock Actual</p>
+                <p id="modal-mov-stock-act" class="text-2xl font-bold text-blue-700"></p>
+            </div>
+            <div class="col-span-2 bg-gray-50 rounded-xl p-4 border border-gray-100" id="modal-mov-comentario-container">
+                <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Comentario</p>
+                <p id="modal-mov-comentario" class="text-sm text-gray-700"></p>
             </div>
         </div>
-        
-        <!-- Modal Footer -->
-        <div class="flex items-center justify-end pt-4 border-t border-gray-200 mt-4">
-            <button onclick="closeMovementModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors">
-                Cerrar
-            </button>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
+            <button onclick="closeMovementModal()" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition-colors">Cerrar</button>
         </div>
     </div>
 </div>

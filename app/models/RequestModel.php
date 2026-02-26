@@ -131,7 +131,7 @@ class RequestModel extends Database {
     }
     
     // Actualizar estado de solicitud
-    public function updateEstado($id, $estado, $usuario_aprobacion_id = null) 
+    public function updateEstado($id, $estado, $usuario_aprobacion_id = null, $fecha_entrega = null) 
     {
         try {
             // Iniciar transacción
@@ -178,6 +178,25 @@ class RequestModel extends Database {
                         return false;
                     }
                 }
+
+                // --- Auto-crear entradas pendientes para el solicitante ---
+                $entriesModel = new EntriesModel();
+                $fechaEntregaFinal = $fecha_entrega ?? date('Y-m-d', strtotime('+7 days'));
+
+                foreach ($detalles as $detalle) {
+                    $entryCreated = $entriesModel->createFromApproval(
+                        $id,
+                        $detalle->producto_id,
+                        $detalle->cantidad,
+                        $solicitud->solicitante_id,
+                        $fechaEntregaFinal
+                    );
+
+                    if (!$entryCreated) {
+                        $this->rollBack();
+                        return false;
+                    }
+                }
             }
             
             // Actualizar el estado de la solicitud
@@ -185,10 +204,12 @@ class RequestModel extends Database {
                 $this->query("UPDATE solicitudes_inventario 
                              SET estado = :estado, 
                                  usuario_aprobacion_id = :usuario_aprobacion_id,
-                                 fecha_aprobacion = Now()
+                                 fecha_aprobacion = Now(),
+                                 fecha_entrega_estimada = :fecha_entrega
                              WHERE id = :id");
                 $this->bind(':estado', $estado);
                 $this->bind(':usuario_aprobacion_id', $usuario_aprobacion_id);
+                $this->bind(':fecha_entrega', $fecha_entrega);
                 $this->bind(':id', intval($id));
             } else {
                 $this->query("UPDATE solicitudes_inventario SET estado = :estado WHERE id = :id");
@@ -272,7 +293,7 @@ class RequestModel extends Database {
     }
     
     // Crear una nueva negociación
-    public function createNegotiation($solicitud_id, $usuario_id, $items, $notas = '') 
+    public function createNegotiation($solicitud_id, $usuario_id, $items, $notas = '', $fecha_entrega = null) 
     {
         try {
             $this->beginTransaction();
@@ -301,8 +322,13 @@ class RequestModel extends Database {
                 $this->execute();
             }
 
-            // 3. Actualizar estado de la solicitud original
-            $this->query("UPDATE solicitudes_inventario SET estado = 'En Negociación' WHERE id = :id");
+            // 3. Actualizar estado de la solicitud original (y guardar la fecha de entrega si se provee)
+            if ($fecha_entrega) {
+                $this->query("UPDATE solicitudes_inventario SET estado = 'En Negociación', fecha_entrega_estimada = :fecha_entrega WHERE id = :id");
+                $this->bind(':fecha_entrega', $fecha_entrega);
+            } else {
+                $this->query("UPDATE solicitudes_inventario SET estado = 'En Negociación' WHERE id = :id");
+            }
             $this->bind(':id', $solicitud_id);
             $this->execute();
 
@@ -363,11 +389,15 @@ class RequestModel extends Database {
             $this->execute();
 
             foreach ($items as $item) {
-                // $item->cantidad is aliased in getNegotiationDetails
                 $this->addDetalle($solicitud_id, $item->producto_id, $item->cantidad, $item->observaciones);
             }
 
-            // 3. Aprobar la solicitud con estado especial
+            // 3. Obtener info de la solicitud (para fecha_entrega_estimada y solicitante)
+            $this->query("SELECT solicitante_id, fecha_entrega_estimada FROM solicitudes_inventario WHERE id = :id");
+            $this->bind(':id', $solicitud_id);
+            $solicitud = $this->single();
+
+            // 4. Aprobar la solicitud con estado especial
             $this->query("UPDATE solicitudes_inventario 
                          SET estado = 'Aprobada con Cambios', 
                              usuario_aprobacion_id = :user_id,
@@ -377,14 +407,30 @@ class RequestModel extends Database {
             $this->bind(':id', $solicitud_id);
             $this->execute();
 
-            // Descontar Stock
+            // 5. Descontar Stock
             foreach ($items as $item) {
                  $this->query("UPDATE productos_inventario 
                              SET stock = stock - :cantidad 
                              WHERE id = :producto_id AND stock >= :cantidad");
-                 $this->bind(':cantidad', $item->cantidad); // Use aliased amount
+                 $this->bind(':cantidad', $item->cantidad);
                  $this->bind(':producto_id', $item->producto_id);
                  $this->execute();
+            }
+
+            // 6. Auto-crear entradas pendientes para el solicitante
+            if ($solicitud) {
+                $entriesModel = new EntriesModel();
+                $fechaEntrega = $solicitud->fecha_entrega_estimada ?? date('Y-m-d', strtotime('+7 days'));
+
+                foreach ($items as $item) {
+                    $entriesModel->createFromApproval(
+                        $solicitud_id,
+                        $item->producto_id,
+                        $item->cantidad,
+                        $solicitud->solicitante_id,
+                        $fechaEntrega
+                    );
+                }
             }
 
             $this->commit();
@@ -495,6 +541,56 @@ class RequestModel extends Database {
                       ORDER BY s.fecha_aprobacion DESC");
         
         $this->bind(':usuario_id', $usuario_id);
+        return $this->resultSet();
+    }
+
+    /**
+     * Top productos más solicitados
+     * @param int $limit   Número de resultados
+     * @param int $days    Ventana de días hacia atrás
+     */
+    public function getTopRequestedProducts($limit = 10, $days = 30) {
+        $this->query("SELECT
+                        p.id,
+                        p.nombre,
+                        p.codigo,
+                        p.categoria,
+                        p.stock,
+                        p.stock_minimo,
+                        COUNT(DISTINCT sd.solicitud_id) AS veces_solicitado,
+                        SUM(sd.cantidad)               AS cantidad_total
+                      FROM solicitud_detalles_inventario sd
+                      JOIN Productos_Inventario p  ON p.id = sd.producto_id
+                      JOIN solicitudes_inventario s ON s.id = sd.solicitud_id
+                      WHERE s.fecha_solicitud >= DATE_SUB(NOW(), INTERVAL :days DAY)
+                      GROUP BY p.id, p.nombre, p.codigo, p.categoria, p.stock, p.stock_minimo
+                      ORDER BY cantidad_total DESC
+                      LIMIT :limit");
+        $this->bind(':days',  $days,  PDO::PARAM_INT);
+        $this->bind(':limit', $limit, PDO::PARAM_INT);
+        return $this->resultSet();
+    }
+
+    /**
+     * Rendimiento por sucursal: solicitudes, tasa de aprobación, productos bajo stock
+     */
+    public function getSucursalPerformance() {
+        $this->query("SELECT
+                        s.id   AS sucursal_id,
+                        s.nombre AS sucursal_nombre,
+                        s.estado AS sucursal_estado,
+                        COUNT(sol.id)                                                       AS total_solicitudes,
+                        SUM(sol.estado IN ('Aprobada','Aprobada con Cambios','Completada')) AS aprobadas,
+                        SUM(sol.estado = 'Rechazada')                                       AS rechazadas,
+                        SUM(sol.estado = 'Pendiente')                                       AS pendientes,
+                        COUNT(DISTINCT p.id)                                                AS total_productos,
+                        SUM(p.stock <= p.stock_minimo)                                      AS productos_bajo_stock
+                      FROM sucursales s
+                      LEFT JOIN Usuarios_Inventario u   ON u.sucursal_id = s.id
+                      LEFT JOIN Solicitudes_Inventario sol ON sol.solicitante_id = u.usuario_id
+                      LEFT JOIN Productos_Inventario p  ON p.usuario_id = u.usuario_id
+                      GROUP BY s.id, s.nombre, s.estado
+                      ORDER BY total_solicitudes DESC");
         return $this->resultSet();
     }
 }

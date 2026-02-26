@@ -154,6 +154,26 @@ class EntriesModel extends Database {
         $this->bind(':usuario_id', $usuario_id);
         return $this->resultSet();
     }
+
+    /**
+     * Obtener entradas pendientes de confirmar para un usuario
+     */
+    public function getPendingByUsuario($usuario_id) {
+        $this->query("SELECT 
+                        e.*,
+                        p.nombre as producto_nombre,
+                        p.codigo as producto_codigo,
+                        p.categoria as producto_categoria,
+                        u.nombre as usuario_nombre
+                      FROM Entradas_Inventario e
+                      INNER JOIN Productos_Inventario p ON e.producto_id = p.id
+                      INNER JOIN Usuarios_Inventario u ON e.usuario_id = u.usuario_id
+                      WHERE e.usuario_id = :usuario_id
+                      AND e.estado = 'Pendiente'
+                      ORDER BY e.fecha_entrega_estimada ASC");
+        $this->bind(':usuario_id', $usuario_id);
+        return $this->resultSet();
+    }
     
     /**
      * Obtener entradas por producto
@@ -518,5 +538,120 @@ class EntriesModel extends Database {
         
         $result = $this->single();
         return $result ? (int)$result->total_recibido : 0;
+    }
+
+    /**
+     * Crear una entrada automáticamente al aprobar una solicitud.
+     * La entrada se crea en estado 'Pendiente' — sin actualizar el stock (ya se hizo al aprobar).
+     *
+     * @param int    $solicitud_id       ID de la solicitud aprobada
+     * @param int    $producto_id        ID del producto
+     * @param int    $cantidad           Cantidad aprobada
+     * @param int    $usuario_id         ID del solicitante (quien recibirá)
+     * @param string $fecha_entrega      Fecha estimada de entrega (Y-m-d)
+     * @return int|false  ID de la entrada creada, o false si falla
+     */
+    public function createFromApproval($solicitud_id, $producto_id, $cantidad, $usuario_id, $fecha_entrega) {
+        $this->query("INSERT INTO Entradas_Inventario 
+                     (solicitud_id, producto_id, cantidad, usuario_id, estado, fecha_entrega_estimada) 
+                     VALUES (:solicitud_id, :producto_id, :cantidad, :usuario_id, 'Pendiente', :fecha_entrega)");
+        
+        $this->bind(':solicitud_id', $solicitud_id);
+        $this->bind(':producto_id', $producto_id);
+        $this->bind(':cantidad', $cantidad);
+        $this->bind(':usuario_id', $usuario_id);
+        $this->bind(':fecha_entrega', $fecha_entrega);
+        
+        if ($this->execute()) {
+            return $this->lastInsertId();
+        }
+        return false;
+    }
+
+    /**
+     * Actualizar el estado de una entrada de seguimiento.
+     *
+     * @param int    $id             ID de la entrada
+     * @param string $estado         Nuevo estado: Confirmada | Retrasada | Parcial | No_Recibida
+     * @param array  $data           Campos opcionales: fecha_entrega_real, cantidad_recibida, notas_entrega
+     *                               nueva_fecha_estimada (para Retrasada)
+     * @return bool
+     */
+    public function updateEntryStatus($id, $estado, $data = []) {
+        try {
+            $this->beginTransaction();
+
+            // If partial, adjust stock for the undelivered quantity
+            if ($estado === 'Parcial' && isset($data['cantidad_recibida'])) {
+                // Get the original entry to know what was deducted
+                $entry = $this->getById($id);
+                if ($entry) {
+                    $noRecibida = $entry->cantidad - (int)$data['cantidad_recibida'];
+                    if ($noRecibida > 0) {
+                        // Return undelivered units to stock
+                        $this->query("UPDATE Productos_Inventario SET stock = stock + :cantidad WHERE id = :producto_id");
+                        $this->bind(':cantidad', $noRecibida);
+                        $this->bind(':producto_id', $entry->producto_id);
+                        if (!$this->execute()) {
+                            $this->rollBack();
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            // If not received at all, return all stock
+            if ($estado === 'No_Recibida') {
+                $entry = $this->getById($id);
+                if ($entry && $entry->estado === 'Pendiente') {
+                    $this->query("UPDATE Productos_Inventario SET stock = stock + :cantidad WHERE id = :producto_id");
+                    $this->bind(':cantidad', $entry->cantidad);
+                    $this->bind(':producto_id', $entry->producto_id);
+                    if (!$this->execute()) {
+                        $this->rollBack();
+                        return false;
+                    }
+                }
+            }
+
+            // Build dynamic update
+            $setClauses = ['estado = :estado'];
+            $params = [':estado' => $estado, ':id' => $id];
+
+            if (!empty($data['fecha_entrega_real'])) {
+                $setClauses[] = 'fecha_entrega_real = :fecha_entrega_real';
+                $params[':fecha_entrega_real'] = $data['fecha_entrega_real'];
+            }
+            if (isset($data['cantidad_recibida'])) {
+                $setClauses[] = 'cantidad_recibida = :cantidad_recibida';
+                $params[':cantidad_recibida'] = $data['cantidad_recibida'];
+            }
+            if (!empty($data['notas_entrega'])) {
+                $setClauses[] = 'notas_entrega = :notas_entrega';
+                $params[':notas_entrega'] = $data['notas_entrega'];
+            }
+            if (!empty($data['nueva_fecha_estimada'])) {
+                $setClauses[] = 'fecha_entrega_estimada = :nueva_fecha_estimada';
+                $params[':nueva_fecha_estimada'] = $data['nueva_fecha_estimada'];
+            }
+
+            $sql = 'UPDATE Entradas_Inventario SET ' . implode(', ', $setClauses) . ' WHERE id = :id';
+            $this->query($sql);
+            foreach ($params as $k => $v) {
+                $this->bind($k, $v);
+            }
+
+            if (!$this->execute()) {
+                $this->rollBack();
+                return false;
+            }
+
+            $this->commit();
+            return true;
+
+        } catch (Exception $e) {
+            if ($this->dbh->inTransaction()) $this->rollBack();
+            return false;
+        }
     }
 }

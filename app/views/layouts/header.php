@@ -158,18 +158,21 @@ function isViewingSucursal($sucursalId)
                         <a href="<?php echo URL_BASE; ?>/products.php/sucursal" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('products/sucursal') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
                             <i class="fa-solid fa-boxes-stacked  w-5 text-center"></i> Inventario
                         </a>
+                        <a href="<?php echo URL_BASE; ?>/agentes.php" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('agentes') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
+                            <i class="fa-solid fa-users w-5 text-center"></i> Mis Agentes
+                        </a>
                     <?php endif; ?>
 
                     <?php if (isset($_SESSION['tipo_usuario']) && $_SESSION['tipo_usuario'] === 'Administrador'): ?>
                         <p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-6">Administración</p>
 
-                        <a href="<?php echo URL_BASE; ?>/sucursales" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('sucursales') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
+                        <a href="<?php echo URL_BASE; ?>/sucursales.php" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('sucursales') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
                             <i class="fa-solid fa-building w-5 text-center"></i> Sucursales
                         </a>
-                        <a href="<?php echo URL_BASE; ?>/agentes" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('agentes') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
+                        <a href="<?php echo URL_BASE; ?>/agentes.php" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('agentes') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
                             <i class="fa-solid fa-user-tie w-5 text-center"></i> Agentes
                         </a>
-                        <a href="<?php echo URL_BASE; ?>/reportes" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('reportes') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
+                        <a href="<?php echo URL_BASE; ?>/reportes.php" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg <?php echo isActive('reportes') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'; ?> transition-colors">
                             <i class="fa-solid fa-chart-pie w-5 text-center"></i> Reportes
                         </a>
                     <?php endif; ?>

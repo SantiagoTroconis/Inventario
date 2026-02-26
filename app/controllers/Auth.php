@@ -32,10 +32,11 @@ class Auth extends Controller
                     // Verificar si el usuario está activo
                     if ($user->status == 1) {
                         // Guardar información en sesión
-                        $_SESSION['usuario_id'] = $user->usuario_id;
-                        $_SESSION['usuario'] = $user->nombre;
-                        $_SESSION['tipo_usuario'] = $user->tipo_usuario;
-                        $_SESSION['correo'] = $user->correo;
+                        $_SESSION['usuario_id']  = $user->usuario_id;
+                        $_SESSION['usuario']     = $user->nombre;
+                        $_SESSION['tipo_usuario']= $user->tipo_usuario;
+                        $_SESSION['correo']      = $user->correo;
+                        $_SESSION['sucursal_id'] = $user->sucursal_id ?? null;
 
                         // Redirigir al home después del login exitoso
                         header('Location: ' . URL_BASE . '/home.php');
